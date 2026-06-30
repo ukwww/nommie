@@ -2,8 +2,9 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
-    
+
     var body: some View {
+        Group {
         switch authViewModel.currentFlow {
         case .splash:
             SplashView()
@@ -15,10 +16,12 @@ struct ContentView: View {
             LogInView()
         case .usernameSetup:
             UsernameSetupView()
-        case .themeSelection:
-            ThemeSelectionView()
         case .home:
             MainTabView()
+        }
+        }
+        .onOpenURL { url in
+            authViewModel.handleDeepLink(url)
         }
     }
 }

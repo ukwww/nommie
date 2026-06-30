@@ -27,9 +27,22 @@ DerivedData/
 Packages/
 
 # Secrets — never commit these
-Secrets.swift
-Secrets.plist
-Secrets.xcconfig
+**/Secrets.swift
+**/Secrets.plist
+**/Secrets.xcconfig
+
+# Firebase service account keys (contain private credentials)
+**/*firebase-adminsdk*.json
+**/serviceAccount.json
 
 # Root-level copies not part of Xcode project
 /GoogleService-Info.plist
+
+# Misc files that don't belong in the repo
+SESSION_CONTEXT.md
+nommie_product_document.pdf
+
+# Backend build artifacts
+node_modules/
+backend/.firebase/
+backend/functions/firebase-debug.log

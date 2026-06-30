@@ -1,4 +1,5 @@
 import SwiftUI
+import AuthenticationServices
 
 struct LogInView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
@@ -53,31 +54,45 @@ struct LogInView: View {
                         
                         VStack(spacing: 16) {
                             NommieTextField(
-                                placeholder: "Email address",
+                                placeholder: "you@example.com",
                                 text: $email,
+                                label: "Email address",
                                 keyboardType: .emailAddress
                             )
                             .focused($focusedField, equals: .email)
-                            
+
                             NommieTextField(
-                                placeholder: "Password",
+                                placeholder: "Your password",
                                 text: $password,
+                                label: "Password",
                                 isSecure: true
                             )
                             .focused($focusedField, equals: .password)
                             
                             HStack {
                                 Spacer()
-                                Button("Forgot password?") {}
+                                Button("Forgot password?") {
+                                    Task {
+                                        await authViewModel.sendPasswordReset(email: email)
+                                    }
+                                }
                                     .font(NommieFont.caption.font())
                                     .foregroundColor(.nommieGreen)
                                     .padding(.trailing, NommieTheme.Padding.large)
                             }
-                            
+
                             if !authViewModel.errorMessage.isEmpty {
                                 Text(authViewModel.errorMessage)
                                     .font(NommieFont.caption.font())
                                     .foregroundColor(.nommieBlush)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, NommieTheme.Padding.large)
+                            }
+
+                            if !authViewModel.infoMessage.isEmpty {
+                                Text(authViewModel.infoMessage)
+                                    .font(NommieFont.caption.font())
+                                    .foregroundColor(.nommieGreen)
                                     .multilineTextAlignment(.center)
                                     .padding(.horizontal, NommieTheme.Padding.large)
                             }
@@ -97,6 +112,32 @@ struct LogInView: View {
                             }
                         }
                         .opacity(formIsValid ? 1.0 : 0.5)
+
+                        HStack(spacing: 12) {
+                            Rectangle().fill(Color.nommieBrown.opacity(0.1)).frame(height: 1)
+                            Text("OR")
+                                .font(Font.custom("Nunito-Regular", size: 12))
+                                .foregroundColor(.nommieBrown.opacity(0.4))
+                            Rectangle().fill(Color.nommieBrown.opacity(0.1)).frame(height: 1)
+                        }
+                        .padding(.horizontal, NommieTheme.Padding.large)
+
+                        SignInWithAppleButton(.continue) { request in
+                            request.requestedScopes = [.fullName, .email]
+                            request.nonce = authViewModel.prepareAppleSignIn()
+                        } onCompletion: { result in
+                            switch result {
+                            case .success(let authorization):
+                                Task { await authViewModel.signInWithApple(authorization: authorization) }
+                            case .failure:
+                                authViewModel.errorMessage = "Apple sign in was cancelled."
+                            }
+                        }
+                        .signInWithAppleButtonStyle(.black)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .padding(.horizontal, NommieTheme.Padding.large)
                         .padding(.bottom, 48)
                     }
                 }

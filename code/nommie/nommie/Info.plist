@@ -9,18 +9,16 @@
 		<string>Lora-SemiBold.ttf</string>
 		<string>Lora-Bold.ttf</string>
 		<string>Lora-Italic.ttf</string>
-		<string>Nunito-Regular.ttf
-</string>
-		<string>Nunito-Medium.ttf
-</string>
-		<string>Nunito-SemiBold.ttf
-</string>
-		<string>Nunito-Bold.ttf
-Nunito-Bold.ttf</string>
-		<string>Caveat-Regular.ttf
-</string>
-		<string>Caveat-Bold.ttf
-</string>
+		<string>Nunito-Regular.ttf</string>
+		<string>Nunito-Medium.ttf</string>
+		<string>Nunito-SemiBold.ttf</string>
+		<string>Nunito-Bold.ttf</string>
+		<string>Caveat-Regular.ttf</string>
+		<string>Caveat-Bold.ttf</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
 	</array>
 </dict>
 </plist>

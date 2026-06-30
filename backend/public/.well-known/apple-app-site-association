@@ -1,0 +1,18 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["59PC49GBY2.com.ubinkw.nommie"],
+        "components": [
+          {
+            "/": "/@*",
+            "comment": "Recipe card deep links — /@username/recipeId"
+          }
+        ]
+      }
+    ]
+  },
+  "appclips": {
+    "apps": ["59PC49GBY2.com.ubinkw.nommie.Clip"]
+  }
+}

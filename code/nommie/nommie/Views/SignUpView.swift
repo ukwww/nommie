@@ -58,22 +58,25 @@ struct SignUpView: View {
                         
                         VStack(spacing: 16) {
                             NommieTextField(
-                                placeholder: "Email address",
+                                placeholder: "you@example.com",
                                 text: $email,
+                                label: "Email address",
                                 keyboardType: .emailAddress
                             )
                             .focused($focusedField, equals: .email)
-                            
+
                             NommieTextField(
-                                placeholder: "Password",
+                                placeholder: "6+ characters",
                                 text: $password,
+                                label: "Password",
                                 isSecure: true
                             )
                             .focused($focusedField, equals: .password)
-                            
+
                             NommieTextField(
-                                placeholder: "Confirm password",
+                                placeholder: "Must match password",
                                 text: $confirmPassword,
+                                label: "Confirm password",
                                 isSecure: true
                             )
                             .focused($focusedField, equals: .confirmPassword)

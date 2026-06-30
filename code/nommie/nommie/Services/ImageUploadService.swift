@@ -17,8 +17,12 @@ class ImageUploadService {
         
         _ = try await imageRef.putDataAsync(imageData, metadata: metadata)
         let downloadURL = try await imageRef.downloadURL()
-        
+
         return downloadURL.absoluteString
+    }
+
+    func deleteImage(recipeId: String) async throws {
+        try await storage.reference().child("recipe_images/\(recipeId).jpg").delete()
     }
 }
 

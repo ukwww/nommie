@@ -10,6 +10,8 @@
 		0D387C8B2FC1473300AFB072 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 0D387C8A2FC1473300AFB072 /* FirebaseAuth */; };
 		0D387C8D2FC1473300AFB072 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 0D387C8C2FC1473300AFB072 /* FirebaseFirestore */; };
 		0D387C8F2FC1473300AFB072 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 0D387C8E2FC1473300AFB072 /* FirebaseStorage */; };
+		0D387DC92FE364D400AFB072 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 0D387DC82FE364D400AFB072 /* FirebaseAnalytics */; };
+		0D387E4D2FF33AC800AFB072 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 0D387E4C2FF33AC800AFB072 /* FirebaseMessaging */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,6 +46,8 @@
 			files = (
 				0D387C8B2FC1473300AFB072 /* FirebaseAuth in Frameworks */,
 				0D387C8D2FC1473300AFB072 /* FirebaseFirestore in Frameworks */,
+				0D387E4D2FF33AC800AFB072 /* FirebaseMessaging in Frameworks */,
+				0D387DC92FE364D400AFB072 /* FirebaseAnalytics in Frameworks */,
 				0D387C8F2FC1473300AFB072 /* FirebaseStorage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -55,6 +59,7 @@
 			isa = PBXGroup;
 			children = (
 				0D387C7D2FC121A800AFB072 /* nommie */,
+				0D387DC72FE364D400AFB072 /* Frameworks */,
 				0D387C7C2FC121A800AFB072 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -65,6 +70,13 @@
 				0D387C7B2FC121A800AFB072 /* nommie.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		0D387DC72FE364D400AFB072 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -90,6 +102,8 @@
 				0D387C8A2FC1473300AFB072 /* FirebaseAuth */,
 				0D387C8C2FC1473300AFB072 /* FirebaseFirestore */,
 				0D387C8E2FC1473300AFB072 /* FirebaseStorage */,
+				0D387DC82FE364D400AFB072 /* FirebaseAnalytics */,
+				0D387E4C2FF33AC800AFB072 /* FirebaseMessaging */,
 			);
 			productName = nommie;
 			productReference = 0D387C7B2FC121A800AFB072 /* nommie.app */;
@@ -205,7 +219,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -262,7 +276,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -277,12 +291,16 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = nommie/nommie.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 59PC49GBY2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = nommie/Info.plist;
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Nommie needs access to save your recipe cards to your camera roll.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Nommie uses your camera to photograph your meal.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Nommie saves your exported recipe card to your photo library.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Nommie lets you pick a photo of your meal from your library.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -301,7 +319,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -310,12 +328,16 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = nommie/nommie.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 59PC49GBY2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = nommie/Info.plist;
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Nommie needs access to save your recipe cards to your camera roll.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Nommie uses your camera to photograph your meal.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Nommie saves your exported recipe card to your photo library.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Nommie lets you pick a photo of your meal from your library.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -334,7 +356,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -387,6 +409,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 0D387C892FC1473300AFB072 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
+		};
+		0D387DC82FE364D400AFB072 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0D387C892FC1473300AFB072 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		0D387E4C2FF33AC800AFB072 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0D387C892FC1473300AFB072 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

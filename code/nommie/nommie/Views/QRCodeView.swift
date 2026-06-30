@@ -4,81 +4,84 @@ import CoreImage.CIFilterBuiltins
 struct QRCodeView: View {
     let username: String
     @Binding var isPresented: Bool
-    
+
     var qrImage: UIImage {
         generateQRCode(from: "nommie://user/\(username)")
     }
-    
+
     var body: some View {
-        ZStack {
-            Color.nommieBackground
-                .ignoresSafeArea()
-            
-            VStack(spacing: 32) {
-                // Handle bar
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(Color.nommieBrown.opacity(0.2))
-                    .frame(width: 40, height: 4)
-                    .padding(.top, 12)
-                
-                Text("Your Nommie Code")
+        ZStack(alignment: .topTrailing) {
+            Color.nommieBackground.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                Text("Your Nommie QR")
                     .font(NommieFont.titleSmall.font())
                     .foregroundColor(.nommieBrown)
-                
-                // QR Code
-                VStack(spacing: 20) {
-                    Image(uiImage: qrImage)
-                        .interpolation(.none)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 220, height: 220)
-                        .padding(24)
-                        .background(
-                            RoundedRectangle(cornerRadius: NommieTheme.CornerRadius.card)
-                                .fill(Color.white)
-                                .shadow(
-                                    color: NommieTheme.Shadow.cardColor,
-                                    radius: NommieTheme.Shadow.cardRadius
-                                )
-                        )
-                    
-                    Text("@\(username)")
-                        .font(NommieFont.titleSmall.font())
-                        .foregroundColor(.nommieBrown)
-                    
-                    Text("Scan to find me on Nommie")
-                        .font(NommieFont.caption.font())
-                        .foregroundColor(.nommieBrown.opacity(0.5))
-                }
-                
-                NommieButton(title: "Close", style: .secondary) {
-                    isPresented = false
-                }
-                .padding(.bottom, 32)
-                
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.top, 28)
+                    .padding(.bottom, 24)
+
+                Image(uiImage: qrImage)
+                    .interpolation(.none)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 220, height: 220)
+                    .padding(20)
+                    .background(
+                        RoundedRectangle(cornerRadius: NommieTheme.CornerRadius.card)
+                            .fill(Color.white)
+                            .shadow(color: NommieTheme.Shadow.cardColor, radius: NommieTheme.Shadow.cardRadius)
+                    )
+                    .frame(maxWidth: .infinity, alignment: .center)
+
+                Text("@\(username)")
+                    .font(NommieFont.titleSmall.font())
+                    .foregroundColor(.nommieBrown)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.top, 20)
+
                 Spacer()
             }
             .padding(.horizontal, NommieTheme.Padding.large)
+
+            // X button
+            Button(action: { isPresented = false }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.nommieBrown.opacity(0.5))
+                    .frame(width: 32, height: 32)
+                    .background(Circle().fill(Color.nommieBrown.opacity(0.08)))
+            }
+            .padding(.top, NommieTheme.Padding.large)
+            .padding(.trailing, NommieTheme.Padding.large)
         }
-        .presentationDetents([.large])
+        .presentationDetents([.fraction(0.6)])
+        .onAppear { NommieAnalytics.qrProfileViewed() }
     }
-    
+
     func generateQRCode(from string: String) -> UIImage {
         let context = CIContext()
         let filter = CIFilter.qrCodeGenerator()
         filter.message = Data(string.utf8)
         filter.correctionLevel = "M"
-        
-        if let outputImage = filter.outputImage {
-            let transform = CGAffineTransform(scaleX: 10, y: 10)
-            let scaledImage = outputImage.transformed(by: transform)
-            
-            if let cgImage = context.createCGImage(scaledImage, from: scaledImage.extent) {
-                return UIImage(cgImage: cgImage)
-            }
+        guard let outputImage = filter.outputImage else {
+            return UIImage(systemName: "xmark.circle") ?? UIImage()
         }
-        
-        return UIImage(systemName: "xmark.circle") ?? UIImage()
+
+        // Color the QR green (foreground) with transparent background
+        let colorFilter = CIFilter(name: "CIFalseColor")!
+        colorFilter.setValue(outputImage, forKey: kCIInputImageKey)
+        colorFilter.setValue(CIColor(color: UIColor(Color.nommieGreen)), forKey: "inputColor0")
+        colorFilter.setValue(CIColor.clear, forKey: "inputColor1")
+        guard let coloredOutput = colorFilter.outputImage else {
+            return UIImage(systemName: "xmark.circle") ?? UIImage()
+        }
+
+        let scaled = coloredOutput.transformed(by: CGAffineTransform(scaleX: 10, y: 10))
+        guard let cgImage = context.createCGImage(scaled, from: scaled.extent) else {
+            return UIImage(systemName: "xmark.circle") ?? UIImage()
+        }
+        return UIImage(cgImage: cgImage)
     }
 }
 

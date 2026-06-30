@@ -105,7 +105,8 @@ struct UsernameSetupView: View {
                         
                         NommieButton(
                             title: "Continue",
-                            style: .primary
+                            style: .primary,
+                            isLoading: authViewModel.isLoading
                         ) {
                             guard usernameIsValid else { return }
                             authViewModel.saveUsername(username: username)
