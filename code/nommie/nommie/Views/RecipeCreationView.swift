@@ -5,6 +5,7 @@ struct RecipeCreationView: View {
     @StateObject private var viewModel = RecipeCreationViewModel()
     @Binding var isPresented: Bool
     var replateSource: Recipe? = nil
+    var editingRecipe: Recipe? = nil
 
     var body: some View {
         ZStack {
@@ -29,13 +30,15 @@ struct RecipeCreationView: View {
                 // Header
                 HStack {
                     Button(action: {
-                        if viewModel.currentStep > 1 {
+                        let minStep = viewModel.isEditMode ? 2 : 1
+                        if viewModel.currentStep > minStep {
                             viewModel.currentStep -= 1
                         } else {
                             isPresented = false
                         }
                     }) {
-                        Image(systemName: viewModel.currentStep > 1 ? "chevron.left" : "xmark")
+                        let minStep = viewModel.isEditMode ? 2 : 1
+                        Image(systemName: viewModel.currentStep > minStep ? "chevron.left" : "xmark")
                             .foregroundColor(.nommieGreen)
                             .font(.system(size: 18, weight: .semibold))
                             .frame(width: 44, height: 44)
@@ -43,7 +46,7 @@ struct RecipeCreationView: View {
 
                     Spacer()
 
-                    Text(replateSource != nil ? "Replate" : "New Recipe")
+                    Text(editingRecipe != nil ? "Edit Recipe" : replateSource != nil ? "Replate" : "New Recipe")
                         .font(NommieFont.titleSmall.font())
                         .foregroundColor(.nommieBrown)
 
@@ -147,7 +150,7 @@ struct RecipeCreationView: View {
                         HStack(spacing: 8) {
                             Image(systemName: "checkmark")
                                 .font(.system(size: 15, weight: .semibold))
-                            Text("Save Recipe")
+                            Text(viewModel.isEditMode ? "Update Recipe" : "Save Recipe")
                                 .font(Font.custom("Nunito-SemiBold", size: 16))
                         }
                         .foregroundColor(.white)
@@ -162,7 +165,9 @@ struct RecipeCreationView: View {
             }
         }
         .onAppear {
-            if let source = replateSource {
+            if let recipe = editingRecipe {
+                viewModel.configureForEdit(recipe: recipe)
+            } else if let source = replateSource {
                 viewModel.configureForReplate(source: source)
             }
         }

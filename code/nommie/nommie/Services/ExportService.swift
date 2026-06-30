@@ -146,6 +146,8 @@ struct ExportCardView: View {
                 ExportMacroPill(label: "PRO\(suffix)", value: "\(macros.protein)g",  accent: accent, size: size)
                 ExportMacroPill(label: "CARB\(suffix)", value: "\(macros.carbs)g",   accent: accent, size: size)
                 ExportMacroPill(label: "FAT\(suffix)", value: "\(macros.fat)g",      accent: accent, size: size)
+                ExportMacroPill(label: "FIB\(suffix)", value: "\(macros.fiber)g",    accent: accent, size: size)
+                ExportMacroPill(label: "SUG\(suffix)", value: "\(macros.sugar)g",    accent: accent, size: size)
             }
 
             if !recipe.tags.isEmpty {

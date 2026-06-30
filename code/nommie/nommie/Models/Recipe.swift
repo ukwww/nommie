@@ -17,12 +17,16 @@ struct Macros: Codable {
     var protein: Int
     var carbs: Int
     var fat: Int
+    var fiber: Int
+    var sugar: Int
 
-    init(calories: Int = 0, protein: Int = 0, carbs: Int = 0, fat: Int = 0) {
+    init(calories: Int = 0, protein: Int = 0, carbs: Int = 0, fat: Int = 0, fiber: Int = 0, sugar: Int = 0) {
         self.calories = calories
         self.protein = protein
         self.carbs = carbs
         self.fat = fat
+        self.fiber = fiber
+        self.sugar = sugar
     }
 }
 
@@ -106,7 +110,9 @@ struct Recipe: Identifiable, Codable {
                 calories: macrosDict["calories"] as? Int ?? 0,
                 protein: macrosDict["protein"] as? Int ?? 0,
                 carbs: macrosDict["carbs"] as? Int ?? 0,
-                fat: macrosDict["fat"] as? Int ?? 0
+                fat: macrosDict["fat"] as? Int ?? 0,
+                fiber: macrosDict["fiber"] as? Int ?? 0,
+                sugar: macrosDict["sugar"] as? Int ?? 0
             )
         } else {
             self.macros = Macros()
@@ -154,7 +160,9 @@ struct Recipe: Identifiable, Codable {
                 "calories": macros.calories,
                 "protein": macros.protein,
                 "carbs": macros.carbs,
-                "fat": macros.fat
+                "fat": macros.fat,
+                "fiber": macros.fiber,
+                "sugar": macros.sugar
             ],
             "ingredients": ingredients.map { [
                 "name": $0.name,

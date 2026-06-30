@@ -11,9 +11,11 @@ struct RecipeDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showingExport = false
     @State private var showingDeleteConfirm = false
+    @State private var showingEditSheet = false
     @State private var isSaved: Bool = false
     @State private var isSaveLoading: Bool = false
     @State private var perServing: Bool = false
+    @State private var originalRecipe: Recipe? = nil
 
     private let userService = UserService()
 
@@ -43,11 +45,19 @@ struct RecipeDetailView: View {
                         .lineLimit(1)
                     Spacer()
                     if isOwner {
-                        Button(action: { showingDeleteConfirm = true }) {
-                            Image(systemName: "trash")
-                                .foregroundColor(.nommieBrown.opacity(0.35))
-                                .font(.system(size: 17))
-                                .frame(width: 44, height: 44)
+                        HStack(spacing: 0) {
+                            Button(action: { showingEditSheet = true }) {
+                                Image(systemName: "pencil")
+                                    .foregroundColor(.nommieBrown.opacity(0.35))
+                                    .font(.system(size: 17))
+                                    .frame(width: 44, height: 44)
+                            }
+                            Button(action: { showingDeleteConfirm = true }) {
+                                Image(systemName: "trash")
+                                    .foregroundColor(.nommieBrown.opacity(0.35))
+                                    .font(.system(size: 17))
+                                    .frame(width: 44, height: 44)
+                            }
                         }
                     } else {
                         Color.clear.frame(width: 44, height: 44)
@@ -65,9 +75,16 @@ struct RecipeDetailView: View {
                                 Text("Replated by: @\(recipe.username)")
                                     .font(Font.custom("Caveat-Regular", size: 19))
                                     .foregroundColor(cardAccent)
-                                Text("↻ from @\(meta.originalUsername) · \"\(meta.originalDishName)\"")
-                                    .font(Font.custom("Nunito-Regular", size: 12))
-                                    .foregroundColor(.nommieBrown.opacity(0.5))
+                                Button(action: {
+                                    Task {
+                                        originalRecipe = try? await userService.fetchRecipe(id: meta.originalRecipeId)
+                                    }
+                                }) {
+                                    Text("↻ from @\(meta.originalUsername) · \"\(meta.originalDishName)\"")
+                                        .font(Font.custom("Nunito-Regular", size: 12))
+                                        .foregroundColor(.nommieBrown.opacity(0.5))
+                                        .underline()
+                                }
                             }
                             .padding(.horizontal, 16)
                             .padding(.top, 16)
@@ -305,6 +322,14 @@ struct RecipeDetailView: View {
         .navigationBarHidden(true)
         .sheet(isPresented: $showingExport) {
             ExportBottomSheet(recipe: recipe, isPresented: $showingExport)
+        }
+        .fullScreenCover(isPresented: $showingEditSheet) {
+            RecipeCreationView(isPresented: $showingEditSheet, editingRecipe: recipe)
+                .environmentObject(authViewModel)
+        }
+        .sheet(item: $originalRecipe) { original in
+            RecipeDetailView(recipe: original, isOwner: original.userId == authViewModel.currentNommieUser?.id)
+                .environmentObject(authViewModel)
         }
         .alert("Delete Recipe", isPresented: $showingDeleteConfirm) {
             Button("Cancel", role: .cancel) {}

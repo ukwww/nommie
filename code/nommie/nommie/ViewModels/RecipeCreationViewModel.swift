@@ -19,6 +19,9 @@ class RecipeCreationViewModel: ObservableObject {
     @Published var isComplete: Bool = false
     private(set) var usedAIEstimate: Bool = false
     private(set) var replateMeta: ReplateMeta? = nil
+    private(set) var isEditMode: Bool = false
+    private(set) var editingRecipeId: String? = nil
+    private(set) var editingImageURL: String = ""
 
     private let openAIService = OpenAIService()
     private let imageUploadService = ImageUploadService()
@@ -30,6 +33,20 @@ class RecipeCreationViewModel: ObservableObject {
 
     var canProceedFromStep2: Bool {
         !dishName.isEmpty && ingredients.contains { !$0.name.isEmpty }
+    }
+
+    func configureForEdit(recipe: Recipe) {
+        isEditMode = true
+        editingRecipeId = recipe.id
+        editingImageURL = recipe.imageURL
+        dishName = recipe.dishName
+        ingredients = recipe.ingredients.isEmpty ? [Ingredient()] : recipe.ingredients
+        notes = recipe.notes
+        macros = recipe.macros
+        tags = recipe.tags
+        servings = recipe.servings
+        prepTimeStars = recipe.prepTimeStars
+        currentStep = 2
     }
 
     func configureForReplate(source: Recipe) {
@@ -75,8 +92,7 @@ class RecipeCreationViewModel: ObservableObject {
         do {
             let result = try await openAIService.estimateMacros(ingredients: ingredients, dishName: dishName, servings: servings)
             await MainActor.run {
-                self.macros = result.macros
-                self.tags = result.tags
+                self.macros = result
                 self.isEstimatingMacros = false
                 self.usedAIEstimate = true
             }
@@ -96,44 +112,65 @@ class RecipeCreationViewModel: ObservableObject {
             errorMessage = ""
         }
 
+        let filteredIngredients = ingredients.filter { !$0.name.isEmpty }
+
         do {
-            guard let image = selectedImage else {
-                await MainActor.run {
-                    errorMessage = "Please select a photo for your recipe."
-                    isSaving = false
+            if isEditMode, let recipeId = editingRecipeId {
+                let updatedData: [String: Any] = [
+                    "dishName": dishName,
+                    "ingredients": filteredIngredients.map { ["name": $0.name, "quantity": $0.quantity] },
+                    "notes": notes,
+                    "macros": [
+                        "calories": macros.calories,
+                        "protein": macros.protein,
+                        "carbs": macros.carbs,
+                        "fat": macros.fat,
+                        "fiber": macros.fiber,
+                        "sugar": macros.sugar
+                    ],
+                    "tags": tags,
+                    "servings": max(1, servings),
+                    "prepTimeStars": prepTimeStars
+                ]
+                try await db.collection("recipes").document(recipeId).updateData(updatedData)
+            } else {
+                guard let image = selectedImage else {
+                    await MainActor.run {
+                        errorMessage = "Please select a photo for your recipe."
+                        isSaving = false
+                    }
+                    return
                 }
-                return
+
+                let recipeId = UUID().uuidString
+                let imageURL = try await imageUploadService.uploadImage(image, recipeId: recipeId)
+
+                let recipe = Recipe(
+                    id: recipeId,
+                    userId: currentUser.id,
+                    username: currentUser.username,
+                    dishName: dishName,
+                    imageURL: imageURL,
+                    ingredients: filteredIngredients,
+                    notes: notes,
+                    macros: macros,
+                    tags: tags,
+                    servings: max(1, servings),
+                    prepTimeStars: prepTimeStars,
+                    replateMeta: replateMeta
+                )
+
+                try await db.collection("recipes")
+                    .document(recipeId)
+                    .setData(recipe.toDictionary())
+
+                NommieAnalytics.cardCreated(
+                    ingredientCount: filteredIngredients.count,
+                    hasNotes: !notes.isEmpty,
+                    usedAIEstimate: usedAIEstimate,
+                    isReplate: replateMeta != nil
+                )
             }
-
-            let recipeId = UUID().uuidString
-            let imageURL = try await imageUploadService.uploadImage(image, recipeId: recipeId)
-
-            let filteredIngredients = ingredients.filter { !$0.name.isEmpty }
-            let recipe = Recipe(
-                id: recipeId,
-                userId: currentUser.id,
-                username: currentUser.username,
-                dishName: dishName,
-                imageURL: imageURL,
-                ingredients: filteredIngredients,
-                notes: notes,
-                macros: macros,
-                tags: tags,
-                servings: max(1, servings),
-                prepTimeStars: prepTimeStars,
-                replateMeta: replateMeta
-            )
-
-            try await db.collection("recipes")
-                .document(recipeId)
-                .setData(recipe.toDictionary())
-
-            NommieAnalytics.cardCreated(
-                ingredientCount: filteredIngredients.count,
-                hasNotes: !notes.isEmpty,
-                usedAIEstimate: usedAIEstimate,
-                isReplate: replateMeta != nil
-            )
 
             await MainActor.run {
                 self.isSaving = false

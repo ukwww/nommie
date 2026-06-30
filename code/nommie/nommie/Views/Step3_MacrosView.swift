@@ -40,15 +40,17 @@ struct Step3_MacrosView: View {
                 .disabled(viewModel.isEstimatingMacros)
                 .padding(.horizontal, NommieTheme.Padding.large)
 
-                // Macro 2x2 grid
+                // Macro 3x2 grid
                 VStack(spacing: 10) {
                     HStack(spacing: 10) {
                         MacroInputBox(label: "CALORIES", value: $viewModel.macros.calories, unit: "")
                         MacroInputBox(label: "PROTEIN", value: $viewModel.macros.protein, unit: "g")
+                        MacroInputBox(label: "CARBS", value: $viewModel.macros.carbs, unit: "g")
                     }
                     HStack(spacing: 10) {
-                        MacroInputBox(label: "CARBS", value: $viewModel.macros.carbs, unit: "g")
                         MacroInputBox(label: "FAT", value: $viewModel.macros.fat, unit: "g")
+                        MacroInputBox(label: "FIBER", value: $viewModel.macros.fiber, unit: "g")
+                        MacroInputBox(label: "SUGAR", value: $viewModel.macros.sugar, unit: "g")
                     }
                 }
                 .padding(.horizontal, NommieTheme.Padding.large)
@@ -65,34 +67,6 @@ struct Step3_MacrosView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, NommieTheme.Padding.large)
-
-                // Tags
-                if !viewModel.tags.isEmpty {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Tags")
-                            .font(NommieFont.bodySemiBold.font())
-                            .foregroundColor(.nommieBrown)
-                            .padding(.horizontal, NommieTheme.Padding.large)
-
-                        FlowLayout(items: viewModel.tags) { tag in
-                            HStack(spacing: 4) {
-                                Text(tag)
-                                    .font(NommieFont.caption.font())
-                                    .foregroundColor(.nommieGreen)
-                                Button(action: { viewModel.removeTag(tag) }) {
-                                    Image(systemName: "xmark")
-                                        .font(.system(size: 10, weight: .semibold))
-                                        .foregroundColor(.nommieGreen.opacity(0.7))
-                                }
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(Capsule().fill(Color.nommieGreen.opacity(0.1)))
-                            .overlay(Capsule().stroke(Color.nommieGreen.opacity(0.25), lineWidth: 1))
-                        }
-                        .padding(.horizontal, NommieTheme.Padding.large)
-                    }
-                }
 
                 if !viewModel.errorMessage.isEmpty {
                     Text(viewModel.errorMessage)

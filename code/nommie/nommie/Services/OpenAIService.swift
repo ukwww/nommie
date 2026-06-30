@@ -6,7 +6,7 @@ import FirebaseAuth
 class OpenAIService {
     private let functionURL = "https://us-central1-nommie-bc531.cloudfunctions.net/estimateMacros"
 
-    func estimateMacros(ingredients: [Ingredient], dishName: String = "", servings: Int = 1) async throws -> (macros: Macros, tags: [String]) {
+    func estimateMacros(ingredients: [Ingredient], dishName: String = "", servings: Int = 1) async throws -> Macros {
         let ingredientList = ingredients
             .filter { !$0.name.isEmpty }
             .map { "\($0.quantity) \($0.name)".trimmingCharacters(in: .whitespaces) }
@@ -49,11 +49,12 @@ class OpenAIService {
             calories: result["calories"] as? Int ?? 0,
             protein: result["protein"] as? Int ?? 0,
             carbs: result["carbs"] as? Int ?? 0,
-            fat: result["fat"] as? Int ?? 0
+            fat: result["fat"] as? Int ?? 0,
+            fiber: result["fiber"] as? Int ?? 0,
+            sugar: result["sugar"] as? Int ?? 0
         )
-        let tags = result["tags"] as? [String] ?? []
 
-        return (macros: macros, tags: tags)
+        return macros
     }
 }
 

@@ -149,10 +149,105 @@ struct Step2_DetailsView: View {
                         .focused($focusedField, equals: "notes")
                 }
 
+                // Tags
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Tags")
+                        .font(NommieFont.bodySemiBold.font())
+                        .foregroundColor(.nommieBrown)
+                        .padding(.horizontal, NommieTheme.Padding.large)
+                    Text("Pick what applies to your dish.")
+                        .font(Font.custom("Nunito-Regular", size: 12))
+                        .foregroundColor(.nommieBrown.opacity(0.45))
+                        .padding(.horizontal, NommieTheme.Padding.large)
+
+                    TagPickerGrid(selectedTags: $viewModel.tags)
+                        .padding(.horizontal, NommieTheme.Padding.large)
+                }
+
                 Spacer(minLength: 120)
             }
             .padding(.top, NommieTheme.Padding.medium)
         }
         .onTapGesture { focusedField = nil }
+    }
+}
+
+// MARK: - Tag Picker
+
+private let allAvailableTags: [String] = [
+    "Breakfast", "Lunch", "Dinner", "Snack", "Sweet Treat",
+    "Dessert", "Drink", "Meal Prep",
+    "High Protein", "High Fiber", "Low Carb", "Low Calorie",
+    "Plant-Based", "Dairy-Free", "Gluten-Free"
+]
+
+struct TagPickerGrid: View {
+    @Binding var selectedTags: [String]
+
+    var body: some View {
+        FlowTagLayout(tags: allAvailableTags) { tag in
+            let isSelected = selectedTags.contains(tag)
+            Button(action: {
+                if isSelected {
+                    selectedTags.removeAll { $0 == tag }
+                } else {
+                    selectedTags.append(tag)
+                }
+            }) {
+                Text(tag)
+                    .font(Font.custom("Nunito-Regular", size: 13))
+                    .foregroundColor(isSelected ? .nommieGreen : .nommieBrown.opacity(0.5))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(Capsule().fill(isSelected ? Color.nommieGreen.opacity(0.12) : Color.nommieBrown.opacity(0.07)))
+                    .overlay(Capsule().stroke(isSelected ? Color.nommieGreen.opacity(0.35) : Color.nommieBrown.opacity(0.15), lineWidth: 1))
+            }
+        }
+    }
+}
+
+struct FlowTagLayout<Content: View>: View {
+    let tags: [String]
+    let content: (String) -> Content
+
+    init(tags: [String], @ViewBuilder content: @escaping (String) -> Content) {
+        self.tags = tags
+        self.content = content
+    }
+
+    var body: some View {
+        var width: CGFloat = 0
+        var height: CGFloat = 0
+        let screenWidth = UIScreen.main.bounds.width - 48
+
+        return GeometryReader { _ in
+            ZStack(alignment: .topLeading) {
+                ForEach(tags, id: \.self) { tag in
+                    content(tag)
+                        .alignmentGuide(.leading) { d in
+                            if abs(width - d.width) > screenWidth {
+                                width = 0
+                                height -= d.height + 8
+                            }
+                            let result = width
+                            if tag == tags.last { width = 0 } else { width -= d.width + 8 }
+                            return result
+                        }
+                        .alignmentGuide(.top) { _ in
+                            let result = height
+                            if tag == tags.last { height = 0 }
+                            return result
+                        }
+                }
+            }
+        }
+        .frame(height: estimatedHeight(for: tags, screenWidth: screenWidth))
+    }
+
+    private func estimatedHeight(for tags: [String], screenWidth: CGFloat) -> CGFloat {
+        let avgTagWidth: CGFloat = 100
+        let tagsPerRow = max(1, Int(screenWidth / (avgTagWidth + 8)))
+        let rows = Int(ceil(Double(tags.count) / Double(tagsPerRow)))
+        return CGFloat(rows) * 36
     }
 }

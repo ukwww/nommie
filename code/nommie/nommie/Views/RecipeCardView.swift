@@ -133,6 +133,8 @@ struct RecipeCardView: View {
                         FeedMacroCol(value: "\(recipe.macros.protein)g", label: "PRO")
                         FeedMacroCol(value: "\(recipe.macros.carbs)g", label: "CARB")
                         FeedMacroCol(value: "\(recipe.macros.fat)g", label: "FAT")
+                        FeedMacroCol(value: "\(recipe.macros.fiber)g", label: "FIB")
+                        FeedMacroCol(value: "\(recipe.macros.sugar)g", label: "SUG")
                     }
 
                     if !recipe.tags.isEmpty {
@@ -210,10 +212,12 @@ struct FeedMacroCol: View {
     var body: some View {
         VStack(spacing: 2) {
             Text(value)
-                .font(Font.custom("Nunito-Bold", size: 15))
+                .font(Font.custom("Nunito-Bold", size: 12))
                 .foregroundColor(.nommieBrown)
+                .minimumScaleFactor(0.7)
+                .lineLimit(1)
             Text(label)
-                .font(Font.custom("Nunito-Regular", size: 10))
+                .font(Font.custom("Nunito-Regular", size: 9))
                 .foregroundColor(.nommieBrown.opacity(0.45))
         }
         .frame(maxWidth: .infinity)

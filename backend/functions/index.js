@@ -18,10 +18,6 @@ if (!admin.apps.length) admin.initializeApp();
 
 const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
 
-const ALLOWED_TAGS = [
-  "High Protein", "High Fiber", "Low Carb", "Comfort Food", "Light Meal",
-  "High Calorie", "Plant-Based", "Baked Good", "Drink/Cocktail",
-];
 
 // Notify a user when someone follows them
 exports.onFollowCreated = onDocumentCreated("follows/{docId}", async (event) => {
@@ -95,12 +91,9 @@ exports.estimateMacros = onCall({ secrets: [OPENAI_API_KEY], invoker: "public" }
     : "This recipe makes 1 serving — estimate the total macros. ";
 
   const systemMessage =
-    "You are a precise nutrition analyst. " +
-    "Use USDA FoodData Central values as your reference where possible. " +
-    "When quantities are given (weight, volume, count), use them directly. " +
-    "When quantities are vague, assume typical restaurant/home-cooking portion sizes. " +
-    "Account for cooking methods that affect macros (e.g., oil absorption when frying, water loss when roasting). " +
-    "Never guess wildly — anchor to real nutritional data.";
+    "You are a nutritional coach. " +
+    "Given a list of ingredients and the cooking method used, modestly estimate the nutritional macros for the dish. " +
+    "Take each ingredient very literally and do not exaggerate things — stay as close to truth as possible.";
 
   const prompt =
     `${dishContext}${servingContext}` +
@@ -108,7 +101,7 @@ exports.estimateMacros = onCall({ secrets: [OPENAI_API_KEY], invoker: "public" }
     `Calculate the combined nutritional macros for ALL ingredients together. ` +
     `Return ONLY a JSON object with these exact fields: ` +
     `calories (Int, total kcal), protein (Int, grams), carbs (Int, grams), fat (Int, grams), ` +
-    `tags (Array of 1–3 strings chosen ONLY from: ${ALLOWED_TAGS.join(", ")}). ` +
+    `fiber (Int, grams), sugar (Int, grams). ` +
     `No explanation, no markdown, just the raw JSON object.`;
 
   let response;
@@ -149,15 +142,13 @@ exports.estimateMacros = onCall({ secrets: [OPENAI_API_KEY], invoker: "public" }
   }
 
   const toInt = (v) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : 0);
-  const tags = Array.isArray(parsed.tags)
-    ? parsed.tags.filter((t) => ALLOWED_TAGS.includes(t))
-    : [];
 
   return {
     calories: toInt(parsed.calories),
     protein: toInt(parsed.protein),
     carbs: toInt(parsed.carbs),
     fat: toInt(parsed.fat),
-    tags,
+    fiber: toInt(parsed.fiber),
+    sugar: toInt(parsed.sugar),
   };
 });
