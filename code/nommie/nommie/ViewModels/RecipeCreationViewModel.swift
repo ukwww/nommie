@@ -175,8 +175,8 @@ class RecipeCreationViewModel: ObservableObject {
             await MainActor.run {
                 self.isSaving = false
                 self.isComplete = true
+                NotificationCenter.default.post(name: .profileNeedsRefresh, object: nil)
             }
-            NotificationCenter.default.post(name: .profileNeedsRefresh, object: nil)
         } catch {
             await MainActor.run {
                 self.errorMessage = "Couldn't save your recipe. Please try again."

@@ -6,12 +6,14 @@ struct NommieUser: Identifiable, Codable {
     var username: String
     var email: String
     var createdAt: Date
+    var exportCount: Int
 
-    init(id: String, username: String, email: String, createdAt: Date = Date()) {
+    init(id: String, username: String, email: String, createdAt: Date = Date(), exportCount: Int = 0) {
         self.id = id
         self.username = username
         self.email = email
         self.createdAt = createdAt
+        self.exportCount = exportCount
     }
 
     init?(from dictionary: [String: Any]) {
@@ -26,5 +28,6 @@ struct NommieUser: Identifiable, Codable {
         self.username = username
         self.email = email
         self.createdAt = timestamp.dateValue()
+        self.exportCount = dictionary["exportCount"] as? Int ?? 0
     }
 }

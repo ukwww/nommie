@@ -123,7 +123,7 @@ struct ProfileView: View {
                         // Weekly recap banner
                         WeeklyOverviewBanner(
                             plates: viewModel.platesThisWeek,
-                            avgProtein: viewModel.avgProteinThisWeek,
+                            exportCount: authViewModel.currentNommieUser?.exportCount ?? 0,
                             expanded: $weeklyExpanded
                         )
                     }

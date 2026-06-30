@@ -331,6 +331,9 @@ struct RecipeDetailView: View {
             RecipeDetailView(recipe: original, isOwner: original.userId == authViewModel.currentNommieUser?.id)
                 .environmentObject(authViewModel)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .profileNeedsRefresh)) { _ in
+            dismiss()
+        }
         .alert("Delete Recipe", isPresented: $showingDeleteConfirm) {
             Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive) {

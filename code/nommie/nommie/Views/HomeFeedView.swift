@@ -143,14 +143,14 @@ struct HomeFeedView: View {
 // MARK: - Weekly Overview Banner
 struct WeeklyOverviewBanner: View {
     let plates: Int
-    let avgProtein: Int
+    let exportCount: Int
     @Binding var expanded: Bool
 
     var body: some View {
         VStack(spacing: 0) {
             Button(action: { withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() } }) {
                 HStack(spacing: 0) {
-                    // Left column: plates count
+                    // Left column: plates this week
                     HStack(alignment: .firstTextBaseline, spacing: 5) {
                         Text("\(plates)")
                             .font(Font.custom("Nunito-Bold", size: 20))
@@ -163,25 +163,23 @@ struct WeeklyOverviewBanner: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    if avgProtein > 0 {
-                        Rectangle()
-                            .fill(Color.white.opacity(0.25))
-                            .frame(width: 1, height: 30)
-                            .padding(.horizontal, 14)
+                    Rectangle()
+                        .fill(Color.white.opacity(0.25))
+                        .frame(width: 1, height: 30)
+                        .padding(.horizontal, 14)
 
-                        // Right column: avg protein
-                        HStack(alignment: .firstTextBaseline, spacing: 5) {
-                            Text("\(avgProtein)g")
-                                .font(Font.custom("Nunito-Bold", size: 20))
-                                .foregroundColor(.nommieYellow)
-                            Text("avg protein")
-                                .font(Font.custom("Nunito-SemiBold", size: 14))
-                                .foregroundColor(.white)
-                                .lineLimit(2)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    // Right column: cards created (lifetime export count)
+                    HStack(alignment: .firstTextBaseline, spacing: 5) {
+                        Text("\(exportCount)")
+                            .font(Font.custom("Nunito-Bold", size: 20))
+                            .foregroundColor(.nommieYellow)
+                        Text(exportCount == 1 ? "card made" : "cards made")
+                            .font(Font.custom("Nunito-SemiBold", size: 14))
+                            .foregroundColor(.white)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                     Image(systemName: expanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 14, weight: .semibold))
@@ -200,10 +198,10 @@ struct WeeklyOverviewBanner: View {
                             .font(Font.custom("Nunito-Regular", size: 13))
                             .foregroundColor(.white.opacity(0.85))
                     } else {
-                        Text("Nutritional highlight")
+                        Text("Your plates, exported")
                             .font(Font.custom("Nunito-SemiBold", size: 13))
                             .foregroundColor(.white.opacity(0.7))
-                        Text("Averaging \(avgProtein)g of protein across \(plates) \(plates == 1 ? "plate" : "plates") — keep it up!")
+                        Text("\(plates == 1 ? "1 plate" : "\(plates) plates") logged this week, \(exportCount == 1 ? "1 card" : "\(exportCount) cards") created all time. Keep sharing.")
                             .font(Font.custom("Nunito-Regular", size: 14))
                             .foregroundColor(.white)
                     }

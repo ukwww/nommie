@@ -11,7 +11,6 @@ class ProfileViewModel: ObservableObject {
     @Published var errorMessage: String = ""
     @Published var selectedTag: String? = nil
     @Published var platesThisWeek: Int = 0
-    @Published var avgProteinThisWeek: Int = 0
 
     private let db = Firestore.firestore()
     private let userService = UserService()
@@ -47,11 +46,10 @@ class ProfileViewModel: ObservableObject {
                 .getDocuments()
 
             let fetched = snapshot.documents.compactMap { Recipe(from: $0.data()) }
-            let (weekCount, avgProtein) = Self.weeklyStats(from: fetched)
+            let weekCount = Self.weeklyPlatesCount(from: fetched)
             await MainActor.run {
                 self.recipes = fetched
                 self.platesThisWeek = weekCount
-                self.avgProteinThisWeek = avgProtein
                 self.isLoading = false
             }
         } catch {
@@ -82,11 +80,8 @@ class ProfileViewModel: ObservableObject {
         } catch {}
     }
 
-    private static func weeklyStats(from recipes: [Recipe]) -> (count: Int, avgProtein: Int) {
+    private static func weeklyPlatesCount(from recipes: [Recipe]) -> Int {
         let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
-        let recent = recipes.filter { $0.createdAt >= weekAgo }
-        guard !recent.isEmpty else { return (0, 0) }
-        let totalProtein = recent.reduce(0) { $0 + $1.macros.protein }
-        return (recent.count, totalProtein / recent.count)
+        return recipes.filter { $0.createdAt >= weekAgo }.count
     }
 }
