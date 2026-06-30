@@ -151,11 +151,15 @@ struct RecipeDetailView: View {
                         }
 
                         // Macros row
+                        let dm = recipe.displayMacros(perServing: perServing)
+                        let sfx = perServing ? "/S" : ""
                         HStack(spacing: 0) {
-                            DetailMacroBox(value: "\(recipe.displayMacros(perServing: perServing).calories)", label: perServing ? "CAL/SRV" : "CAL", accent: cardAccent)
-                            DetailMacroBox(value: "\(recipe.displayMacros(perServing: perServing).protein)g", label: perServing ? "PRO/SRV" : "PROTEIN", accent: cardAccent)
-                            DetailMacroBox(value: "\(recipe.displayMacros(perServing: perServing).carbs)g", label: perServing ? "CARB/SRV" : "CARBS", accent: cardAccent)
-                            DetailMacroBox(value: "\(recipe.displayMacros(perServing: perServing).fat)g", label: perServing ? "FAT/SRV" : "FAT", accent: cardAccent)
+                            DetailMacroBox(value: "\(dm.calories)", label: "CAL\(sfx)", accent: cardAccent)
+                            DetailMacroBox(value: "\(dm.protein)g", label: "PRO\(sfx)", accent: cardAccent)
+                            DetailMacroBox(value: "\(dm.carbs)g", label: "CARB\(sfx)", accent: cardAccent)
+                            DetailMacroBox(value: "\(dm.fat)g", label: "FAT\(sfx)", accent: cardAccent)
+                            DetailMacroBox(value: "\(dm.fiber)g", label: "FIB\(sfx)", accent: cardAccent)
+                            DetailMacroBox(value: "\(dm.sugar)g", label: "SUG\(sfx)", accent: cardAccent)
                         }
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                         .padding(.horizontal, 16)
@@ -322,6 +326,7 @@ struct RecipeDetailView: View {
         .navigationBarHidden(true)
         .sheet(isPresented: $showingExport) {
             ExportBottomSheet(recipe: recipe, isPresented: $showingExport)
+                .environmentObject(authViewModel)
         }
         .fullScreenCover(isPresented: $showingEditSheet) {
             RecipeCreationView(isPresented: $showingEditSheet, editingRecipe: recipe)
@@ -385,12 +390,14 @@ struct DetailMacroBox: View {
     var body: some View {
         VStack(spacing: 3) {
             Text(value)
-                .font(Font.custom("Nunito-Bold", size: 16))
+                .font(Font.custom("Nunito-Bold", size: 13))
                 .foregroundColor(.nommieBrown)
+                .minimumScaleFactor(0.7)
+                .lineLimit(1)
             Text(label)
-                .font(Font.custom("Nunito-Regular", size: 9))
+                .font(Font.custom("Nunito-Regular", size: 8))
                 .foregroundColor(.nommieBrown.opacity(0.5))
-                .kerning(0.3)
+                .kerning(0.2)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)

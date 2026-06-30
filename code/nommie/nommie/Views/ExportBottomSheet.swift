@@ -1,10 +1,9 @@
 import SwiftUI
-import FirebaseAuth
-import FirebaseFirestore
 
 struct ExportBottomSheet: View {
     let recipe: Recipe
     @Binding var isPresented: Bool
+    @EnvironmentObject var authViewModel: AuthViewModel
     @State private var selectedFormat: ExportFormat = .post
     @State private var selectedPalette: CardPalette = CardPalettes.neutral
     @State private var perServing: Bool = false
@@ -230,10 +229,7 @@ struct ExportBottomSheet: View {
                 )
                 try await exportService.saveToPhotoLibrary(image)
                 NommieAnalytics.cardExported(format: selectedFormat == .story ? "story" : "post")
-                if let uid = Auth.auth().currentUser?.uid {
-                    try? await Firestore.firestore().collection("users").document(uid)
-                        .updateData(["exportCount": FieldValue.increment(Int64(1))])
-                }
+                await MainActor.run { authViewModel.recordExport() }
                 await MainActor.run {
                     isExporting = false
                     showSuccess = true

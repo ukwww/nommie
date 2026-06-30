@@ -52,7 +52,9 @@ extension Recipe {
             calories: macros.calories / servings,
             protein: macros.protein / servings,
             carbs: macros.carbs / servings,
-            fat: macros.fat / servings
+            fat: macros.fat / servings,
+            fiber: macros.fiber / servings,
+            sugar: macros.sugar / servings
         )
     }
 }

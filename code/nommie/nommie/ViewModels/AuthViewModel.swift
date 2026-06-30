@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import FirebaseAuth
+import FirebaseFirestore
 import AuthenticationServices
 import CryptoKit
 
@@ -168,6 +169,17 @@ class AuthViewModel: ObservableObject {
                     self.isLoading = false
                 }
             }
+        }
+    }
+
+    // MARK: - Export tracking
+
+    func recordExport() {
+        guard let uid = currentNommieUser?.id else { return }
+        currentNommieUser?.exportCount += 1
+        Task {
+            try? await Firestore.firestore().collection("users").document(uid)
+                .updateData(["exportCount": FieldValue.increment(Int64(1))])
         }
     }
 
