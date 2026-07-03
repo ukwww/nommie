@@ -6,13 +6,10 @@
         "components": [
           {
             "/": "/@*",
-            "comment": "Recipe card deep links — /@username/recipeId"
+            "comment": "Profile and recipe deep links — /@username and /@username/recipeId"
           }
         ]
       }
     ]
-  },
-  "appclips": {
-    "apps": ["59PC49GBY2.com.ubinkw.nommie.Clip"]
   }
 }

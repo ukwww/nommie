@@ -13,6 +13,7 @@ class HomeFeedViewModel: ObservableObject {
     @Published var avgProteinThisWeek: Int = 0
 
     private let db = Firestore.firestore()
+    private let userService = UserService()
 
     func removeRecipe(id: String) {
         recipes.removeAll { $0.id == id }
@@ -50,8 +51,9 @@ class HomeFeedViewModel: ObservableObject {
                 $0.data()["followingId"] as? String
             }
 
-            // Feed = own recipes + followed users' recipes
-            let feedUserIds = Array(Set([currentUserId] + followingIds))
+            // Feed = own recipes + followed users' recipes, minus anyone blocked
+            let blockedIds = (try? await userService.fetchBlockedUserIds(blockerId: currentUserId)) ?? []
+            let feedUserIds = Array(Set([currentUserId] + followingIds).subtracting(blockedIds))
 
             // Firestore "in" limit is 30 — chunk if someone follows many people
             var allRecipes: [Recipe] = []

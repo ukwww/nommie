@@ -17,6 +17,8 @@ struct OtherUserProfileView: View {
     @State private var selectedRecipe: Recipe? = nil
     @State private var replateSource: Recipe? = nil
     @State private var showingCreation: Bool = false
+    @State private var isBlocked: Bool = false
+    @State private var showingBlockConfirm: Bool = false
 
     private let db = Firestore.firestore()
     private let userService = UserService()
@@ -41,7 +43,18 @@ struct OtherUserProfileView: View {
                         .font(Font.custom("Lora-SemiBold", size: 17))
                         .foregroundColor(.nommieBrown)
                     Spacer()
-                    Color.clear.frame(width: 44, height: 44)
+                    Menu {
+                        if isBlocked {
+                            Button("Unblock @\(username)") { unblockUser() }
+                        } else {
+                            Button("Block @\(username)", role: .destructive) { showingBlockConfirm = true }
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .foregroundColor(.nommieBrown.opacity(0.4))
+                            .font(.system(size: 17))
+                            .frame(width: 44, height: 44)
+                    }
                 }
                 .padding(.horizontal, 8)
                 .padding(.top, NommieTheme.Padding.large)
@@ -49,6 +62,29 @@ struct OtherUserProfileView: View {
                 if isLoading {
                     Spacer()
                     ProgressView().progressViewStyle(CircularProgressViewStyle(tint: .nommieGreen))
+                    Spacer()
+                } else if isBlocked {
+                    Spacer()
+                    VStack(spacing: 12) {
+                        Image(systemName: "hand.raised")
+                            .font(.system(size: 40))
+                            .foregroundColor(.nommieBrown.opacity(0.25))
+                        Text("You've blocked @\(username)")
+                            .font(Font.custom("Nunito-SemiBold", size: 15))
+                            .foregroundColor(.nommieBrown.opacity(0.6))
+                        Text("Their recipes are hidden from you.")
+                            .font(Font.custom("Nunito-Regular", size: 13))
+                            .foregroundColor(.nommieBrown.opacity(0.4))
+                        Button(action: unblockUser) {
+                            Text("Unblock")
+                                .font(Font.custom("Nunito-SemiBold", size: 15))
+                                .foregroundColor(.nommieGreen)
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 10)
+                                .overlay(Capsule().stroke(Color.nommieGreen.opacity(0.4), lineWidth: 1.5))
+                        }
+                        .padding(.top, 6)
+                    }
                     Spacer()
                 } else {
                     ScrollView {
@@ -134,9 +170,36 @@ struct OtherUserProfileView: View {
             ), replateSource: source)
             .environmentObject(authViewModel)
         }
+        .alert("Block @\(username)?", isPresented: $showingBlockConfirm) {
+            Button("Cancel", role: .cancel) {}
+            Button("Block", role: .destructive) { blockUser() }
+        } message: {
+            Text("They won't appear in your feed or search results, and you'll unfollow each other.")
+        }
         .task {
             await loadProfile()
             NommieAnalytics.otherProfileViewed()
+        }
+    }
+
+    private func blockUser() {
+        guard let currentUserId = authViewModel.currentNommieUser?.id, !targetUserId.isEmpty else { return }
+        Task {
+            try? await userService.blockUser(blockerId: currentUserId, blockedId: targetUserId)
+            await MainActor.run {
+                isBlocked = true
+                isFollowing = false
+            }
+            NotificationCenter.default.post(name: .profileNeedsRefresh, object: nil)
+        }
+    }
+
+    private func unblockUser() {
+        guard let currentUserId = authViewModel.currentNommieUser?.id, !targetUserId.isEmpty else { return }
+        Task {
+            try? await userService.unblockUser(blockerId: currentUserId, blockedId: targetUserId)
+            await MainActor.run { isBlocked = false }
+            NotificationCenter.default.post(name: .profileNeedsRefresh, object: nil)
         }
     }
 
@@ -149,6 +212,11 @@ struct OtherUserProfileView: View {
             }
             let uid = user.id
             await MainActor.run { targetUserId = uid }
+
+            if let currentUserId = authViewModel.currentNommieUser?.id {
+                let blocked = (try? await userService.isBlocked(blockerId: currentUserId, blockedId: uid)) ?? false
+                await MainActor.run { isBlocked = blocked }
+            }
 
             // Parallel fetches for recipes and follower count
             async let recipesTask = db.collection("recipes")

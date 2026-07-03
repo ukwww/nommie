@@ -150,6 +150,48 @@ class UserService {
         return users
     }
 
+    // MARK: - Report & Block (App Store UGC requirements)
+
+    func reportRecipe(recipeId: String, recipeOwnerId: String, reporterId: String, reason: String) async throws {
+        try await db.collection("reports").addDocument(data: [
+            "recipeId": recipeId,
+            "recipeOwnerId": recipeOwnerId,
+            "reporterId": reporterId,
+            "reason": reason,
+            "createdAt": Timestamp(date: Date())
+        ])
+    }
+
+    func blockUser(blockerId: String, blockedId: String) async throws {
+        let docId = "\(blockerId)_\(blockedId)"
+        try await db.collection("blocks").document(docId).setData([
+            "blockerId": blockerId,
+            "blockedId": blockedId,
+            "createdAt": Timestamp(date: Date())
+        ])
+        // Sever the follow relationship in both directions
+        try? await db.collection("follows").document("\(blockerId)_\(blockedId)").delete()
+        try? await db.collection("follows").document("\(blockedId)_\(blockerId)").delete()
+    }
+
+    func unblockUser(blockerId: String, blockedId: String) async throws {
+        let docId = "\(blockerId)_\(blockedId)"
+        try await db.collection("blocks").document(docId).delete()
+    }
+
+    func isBlocked(blockerId: String, blockedId: String) async throws -> Bool {
+        let docId = "\(blockerId)_\(blockedId)"
+        let doc = try await db.collection("blocks").document(docId).getDocument()
+        return doc.exists
+    }
+
+    func fetchBlockedUserIds(blockerId: String) async throws -> Set<String> {
+        let snapshot = try await db.collection("blocks")
+            .whereField("blockerId", isEqualTo: blockerId)
+            .getDocuments()
+        return Set(snapshot.documents.compactMap { $0.data()["blockedId"] as? String })
+    }
+
     // MARK: - Save / Bookmark
 
     func saveRecipe(userId: String, recipeId: String) async throws {

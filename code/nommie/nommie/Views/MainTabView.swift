@@ -3,6 +3,7 @@ import SwiftUI
 struct MainTabView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @State private var deepLinkedRecipe: Recipe? = nil
+    @State private var deepLinkedUsername: IdentifiableDeepLinkUsername? = nil
     private let userService = UserService()
 
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
@@ -42,6 +43,18 @@ struct MainTabView: View {
             authViewModel.pendingDeepLinkRecipeId = nil
             Task { deepLinkedRecipe = try? await userService.fetchRecipe(id: id) }
         }
+        .onReceive(authViewModel.$pendingDeepLinkUsername) { username in
+            guard let username, !username.isEmpty else { return }
+            authViewModel.pendingDeepLinkUsername = nil
+            // Own profile is already a tab — only present other users
+            if username != authViewModel.currentNommieUser?.username {
+                deepLinkedUsername = IdentifiableDeepLinkUsername(value: username)
+            }
+        }
+        .fullScreenCover(item: $deepLinkedUsername) { wrapper in
+            OtherUserProfileView(username: wrapper.value)
+                .environmentObject(authViewModel)
+        }
         .fullScreenCover(isPresented: Binding(
             get: { !hasSeenOnboarding },
             set: { if !$0 { hasSeenOnboarding = true } }
@@ -52,6 +65,11 @@ struct MainTabView: View {
             ))
         }
     }
+}
+
+private struct IdentifiableDeepLinkUsername: Identifiable {
+    let id = UUID()
+    let value: String
 }
 
 #Preview {

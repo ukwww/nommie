@@ -12,6 +12,8 @@ struct RecipeDetailView: View {
     @State private var showingExport = false
     @State private var showingDeleteConfirm = false
     @State private var showingEditSheet = false
+    @State private var showingReportDialog = false
+    @State private var showingReportThanks = false
     @State private var isSaved: Bool = false
     @State private var isSaveLoading: Bool = false
     @State private var perServing: Bool = false
@@ -60,7 +62,12 @@ struct RecipeDetailView: View {
                             }
                         }
                     } else {
-                        Color.clear.frame(width: 44, height: 44)
+                        Button(action: { showingReportDialog = true }) {
+                            Image(systemName: "flag")
+                                .foregroundColor(.nommieBrown.opacity(0.35))
+                                .font(.system(size: 16))
+                                .frame(width: 44, height: 44)
+                        }
                     }
                 }
                 .padding(.horizontal, 8)
@@ -212,17 +219,21 @@ struct RecipeDetailView: View {
 
                         // Tags
                         if !recipe.tags.isEmpty {
-                            HStack(spacing: 6) {
-                                ForEach(recipe.tags, id: \.self) { tag in
-                                    Text(tag)
-                                        .font(Font.custom("Nunito-Regular", size: 12))
-                                        .foregroundColor(.nommieBrown.opacity(0.7))
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 5)
-                                        .background(Capsule().fill(Color.nommieBrown.opacity(0.08)))
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 6) {
+                                    ForEach(recipe.tags, id: \.self) { tag in
+                                        Text(tag)
+                                            .font(Font.custom("Nunito-Regular", size: 12))
+                                            .foregroundColor(.nommieBrown.opacity(0.7))
+                                            .lineLimit(1)
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 5)
+                                            .background(Capsule().fill(Color.nommieBrown.opacity(0.08)))
+                                            .fixedSize()
+                                    }
                                 }
+                                .padding(.horizontal, 16)
                             }
-                            .padding(.horizontal, 16)
                             .padding(.bottom, 14)
                         }
 
@@ -339,6 +350,17 @@ struct RecipeDetailView: View {
         .onReceive(NotificationCenter.default.publisher(for: .profileNeedsRefresh)) { _ in
             dismiss()
         }
+        .confirmationDialog("Report this recipe", isPresented: $showingReportDialog, titleVisibility: .visible) {
+            Button("Inappropriate content") { submitReport(reason: "inappropriate") }
+            Button("Spam or misleading") { submitReport(reason: "spam") }
+            Button("Offensive or harmful") { submitReport(reason: "offensive") }
+            Button("Cancel", role: .cancel) {}
+        }
+        .alert("Thanks for the report", isPresented: $showingReportThanks) {
+            Button("OK") {}
+        } message: {
+            Text("We'll review this content within 24 hours.")
+        }
         .alert("Delete Recipe", isPresented: $showingDeleteConfirm) {
             Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive) {
@@ -355,6 +377,19 @@ struct RecipeDetailView: View {
             if !isOwner, let uid = authViewModel.currentNommieUser?.id {
                 isSaved = (try? await userService.isSaved(userId: uid, recipeId: recipe.id)) ?? false
             }
+        }
+    }
+
+    private func submitReport(reason: String) {
+        guard let uid = authViewModel.currentNommieUser?.id else { return }
+        Task {
+            try? await userService.reportRecipe(
+                recipeId: recipe.id,
+                recipeOwnerId: recipe.userId,
+                reporterId: uid,
+                reason: reason
+            )
+            await MainActor.run { showingReportThanks = true }
         }
     }
 

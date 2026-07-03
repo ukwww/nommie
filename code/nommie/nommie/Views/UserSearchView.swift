@@ -125,9 +125,15 @@ struct UserSearchView: View {
             .sink { q in
                 Task {
                     let found = (try? await userService.searchUsers(prefix: q)) ?? []
+                    var blockedIds: Set<String> = []
+                    if let uid = authViewModel.currentNommieUser?.id {
+                        blockedIds = (try? await userService.fetchBlockedUserIds(blockerId: uid)) ?? []
+                    }
                     await MainActor.run {
-                        // Don't list yourself
-                        self.results = found.filter { $0.id != authViewModel.currentNommieUser?.id }
+                        // Don't list yourself or anyone you've blocked
+                        self.results = found.filter {
+                            $0.id != authViewModel.currentNommieUser?.id && !blockedIds.contains($0.id)
+                        }
                         self.isSearching = false
                     }
                 }

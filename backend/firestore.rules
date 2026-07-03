@@ -31,12 +31,34 @@ service cloud.firestore {
     }
 
     // Follows — doc ID is "{followerId}_{followingId}".
+    // Either side may delete: unfollowing, or removing a follower when blocking.
     match /follows/{followId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
                     && request.resource.data.followerId == request.auth.uid;
       allow delete: if isSignedIn()
-                    && resource.data.followerId == request.auth.uid;
+                    && (resource.data.followerId == request.auth.uid
+                        || resource.data.followingId == request.auth.uid);
+    }
+
+    // Reports — users flag objectionable recipes; reviewed via the Firebase console.
+    // Create-only for the reporter; nobody can read or edit reports from the client.
+    match /reports/{reportId} {
+      allow create: if isSignedIn()
+                    && request.resource.data.reporterId == request.auth.uid;
+      allow read, update, delete: if false;
+    }
+
+    // Blocks — doc ID is "{blockerId}_{blockedId}". Only the blocker sees their list.
+    match /blocks/{blockId} {
+      allow read: if isSignedIn()
+                  && resource.data.blockerId == request.auth.uid;
+      allow create: if isSignedIn()
+                    && request.resource.data.blockerId == request.auth.uid
+                    && request.resource.data.blockedId is string
+                    && blockId == request.auth.uid + "_" + request.resource.data.blockedId;
+      allow delete: if isSignedIn()
+                    && resource.data.blockerId == request.auth.uid;
     }
 
     // Saved recipes — doc ID is "{userId}_{recipeId}".

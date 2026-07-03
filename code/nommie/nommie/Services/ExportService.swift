@@ -152,13 +152,15 @@ struct ExportCardView: View {
 
             if !recipe.tags.isEmpty {
                 HStack(spacing: 4) {
-                    ForEach(recipe.tags.prefix(2), id: \.self) { tag in
+                    ForEach(recipe.tags.prefix(3), id: \.self) { tag in
                         Text(tag)
                             .font(Font.custom("Nunito-Regular", size: tagSize))
                             .foregroundColor(accent)
+                            .lineLimit(1)
                             .padding(.horizontal, tagPadH)
                             .padding(.vertical, tagPadV)
                             .background(Capsule().fill(accent.opacity(0.12)))
+                            .fixedSize()
                     }
                 }
             }
@@ -252,7 +254,7 @@ struct ExportCardView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             VStack(alignment: .trailing, spacing: 5) {
-                CardQRCode(value: "nommie.app/@\(recipe.username)/\(recipe.id)", size: 44, accent: accent)
+                CardQRCode(value: "https://getnommie.app/@\(recipe.username)/\(recipe.id)", size: 44, accent: accent)
                 Text("nommie ")
                     .font(Font.custom("Caveat-Bold", size: 18))
                     .foregroundColor(accent)
@@ -287,7 +289,7 @@ struct ExportCardView: View {
                 .frame(maxWidth: .infinity)
 
             VStack(alignment: .trailing, spacing: 5) {
-                CardQRCode(value: "nommie.app/@\(recipe.username)/\(recipe.id)", size: 40, accent: accent)
+                CardQRCode(value: "https://getnommie.app/@\(recipe.username)/\(recipe.id)", size: 40, accent: accent)
                 Text("nommie ")
                     .font(Font.custom("Caveat-Bold", size: 16))
                     .foregroundColor(accent)

@@ -24,6 +24,7 @@ class AuthViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var currentNommieUser: NommieUser? = nil
     @Published var pendingDeepLinkRecipeId: String? = nil
+    @Published var pendingDeepLinkUsername: String? = nil
     private(set) var currentNonce: String? = nil
 
     var isAppleUser: Bool {
@@ -188,8 +189,14 @@ class AuthViewModel: ObservableObject {
     func handleDeepLink(_ url: URL) {
         guard url.host == "getnommie.app" else { return }
         let parts = url.pathComponents
-        guard parts.count == 3, parts[1].hasPrefix("@") else { return }
-        pendingDeepLinkRecipeId = parts[2]
+        guard parts.count >= 2, parts[1].hasPrefix("@") else { return }
+        if parts.count >= 3 {
+            // getnommie.app/@username/recipeId → open the recipe
+            pendingDeepLinkRecipeId = parts[2]
+        } else {
+            // getnommie.app/@username → open the profile
+            pendingDeepLinkUsername = String(parts[1].dropFirst())
+        }
     }
 
     // MARK: - Sign in with Apple

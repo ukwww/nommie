@@ -6,7 +6,7 @@ struct QRCodeView: View {
     @Binding var isPresented: Bool
 
     var qrImage: UIImage {
-        generateQRCode(from: "nommie://user/\(username)")
+        generateQRCode(from: "https://getnommie.app/@\(username)")
     }
 
     var body: some View {

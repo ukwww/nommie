@@ -190,6 +190,16 @@ struct ProfileView: View {
                         }
 
                         Button(action: {
+                            if let url = URL(string: "mailto:ubinkw@gmail.com?subject=Nommie%20Support") {
+                                UIApplication.shared.open(url)
+                            }
+                        }) {
+                            Text("Contact Support")
+                                .font(NommieFont.caption.font())
+                                .foregroundColor(.nommieBrown.opacity(0.4))
+                        }
+
+                        Button(action: {
                             if authViewModel.isAppleUser {
                                 showingAppleDeleteSheet = true
                             } else {
