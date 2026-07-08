@@ -13,11 +13,16 @@ service cloud.firestore {
     }
 
     // User profiles — readable by any signed-in user (feed, QR, profile lookup).
+    // Username changes are rate-limited server-side: once changed, locked for
+    // 30 days (kept honest here, not just in the client).
     match /users/{userId} {
       allow read: if isSignedIn();
       allow create: if isOwner(userId)
                     && request.resource.data.uid == userId;
-      allow update: if isOwner(userId);
+      allow update: if isOwner(userId)
+                    && (request.resource.data.username == resource.data.username
+                        || !('usernameChangedAt' in resource.data)
+                        || request.time > resource.data.usernameChangedAt + duration.value(30, 'd'));
       allow delete: if isOwner(userId);
     }
 
@@ -41,6 +46,43 @@ service cloud.firestore {
                         || resource.data.followingId == request.auth.uid);
     }
 
+    // Comments — flat, 500 chars max. The comment author AND the recipe owner
+    // may delete (owner-delete is the lightweight moderation lever). The
+    // recipeOwnerId field is verified against the actual recipe at create time.
+    match /comments/{commentId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() > 0
+                    && request.resource.data.text.size() <= 500
+                    && request.resource.data.recipeId is string
+                    && request.resource.data.recipeOwnerId
+                       == get(/databases/$(database)/documents/recipes/$(request.resource.data.recipeId)).data.userId;
+      // Comment likes: the only mutable field is likedBy, and the only legal
+      // change is adding or removing exactly your own uid.
+      allow update: if isSignedIn()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy'])
+                    && (request.resource.data.likedBy.toSet().difference(resource.data.get('likedBy', []).toSet()) == [request.auth.uid].toSet()
+                        || resource.data.get('likedBy', []).toSet().difference(request.resource.data.likedBy.toSet()) == [request.auth.uid].toSet());
+      allow delete: if isSignedIn()
+                    && (resource.data.userId == request.auth.uid
+                        || resource.data.recipeOwnerId == request.auth.uid);
+    }
+
+    // Notifications — written only by cloud triggers. Recipients can read
+    // theirs, flip the read flag, and delete (used for account cleanup).
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn()
+                  && resource.data.recipientId == request.auth.uid;
+      allow create: if false;
+      allow update: if isSignedIn()
+                    && resource.data.recipientId == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if isSignedIn()
+                    && resource.data.recipientId == request.auth.uid;
+    }
+
     // Reports — users flag objectionable recipes; reviewed via the Firebase console.
     // Create-only for the reporter; nobody can read or edit reports from the client.
     match /reports/{reportId} {
@@ -61,10 +103,23 @@ service cloud.firestore {
                     && resource.data.blockerId == request.auth.uid;
     }
 
-    // Saved recipes — doc ID is "{userId}_{recipeId}".
+    // Likes — doc ID is "{userId}_{recipeId}". Counters on the recipe doc are
+    // maintained by cloud triggers, so clients only ever write their own like doc.
+    match /likes/{likeId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.recipeId is string
+                    && likeId == request.auth.uid + "_" + request.resource.data.recipeId;
+      allow delete: if isSignedIn()
+                    && resource.data.userId == request.auth.uid;
+    }
+
+    // Saved recipes — doc ID is "{userId}_{recipeId}". Readable by any
+    // signed-in user so profiles can show a public Saved tab; only the owner
+    // can save or unsave.
     match /saved/{savedId} {
-      allow read: if isSignedIn()
-                  && resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn();
       allow create: if isSignedIn()
                     && request.resource.data.userId == request.auth.uid;
       allow delete: if isSignedIn()

@@ -14,6 +14,22 @@ enum NommieAnalytics {
         ])
     }
 
+    static func ingredientsDrafted(count: Int) {
+        Analytics.logEvent("ingredients_drafted", parameters: [
+            "ingredient_count": count
+        ])
+    }
+
+    static func ingredientsDraftFailed() {
+        Analytics.logEvent("ingredients_draft_failed", parameters: nil)
+    }
+
+    static func ingredientsConfirmed(count: Int) {
+        Analytics.logEvent("ingredients_confirmed", parameters: [
+            "ingredient_count": count
+        ])
+    }
+
     static func macroEstimateTapped() {
         Analytics.logEvent("macro_estimate_tapped", parameters: nil)
     }
@@ -45,6 +61,14 @@ enum NommieAnalytics {
 
     static func saveTapped() {
         Analytics.logEvent("save_tapped", parameters: nil)
+    }
+
+    static func likeTapped() {
+        Analytics.logEvent("like_tapped", parameters: nil)
+    }
+
+    static func commentPosted() {
+        Analytics.logEvent("comment_posted", parameters: nil)
     }
 
     static func followTapped() {

@@ -43,7 +43,10 @@ enum CardPalettes {
 
 // MARK: - Prep time helpers
 extension Recipe {
-    var prepTimeMinutes: Int { prepTimeStars * 15 }
+    // Time is now a 4-quarter clock (15/30/45/60). Legacy recipes stored up to
+    // 5 stars; cap them at the full hour.
+    var prepTimeQuarters: Int { min(max(prepTimeStars, 1), 4) }
+    var prepTimeMinutes: Int { prepTimeQuarters * 15 }
     var prepTimeLabel: String { "~\(prepTimeMinutes) min" }
 
     func displayMacros(perServing: Bool) -> Macros {

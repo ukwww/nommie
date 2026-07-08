@@ -10,7 +10,7 @@
 //   firebase deploy --only functions
 
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentDeleted, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 
@@ -19,57 +19,357 @@ if (!admin.apps.length) admin.initializeApp();
 const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
 
 
+// Writes an in-app activity notification and (best effort) sends the push.
+// All notification docs are created server-side only — clients just read.
+async function notifyUser(recipientId, { type, actorId, actorUsername, recipeId = null, dishName = null, preview = null, title, body }) {
+  const db = admin.firestore();
+
+  await db.collection("notifications").add({
+    recipientId,
+    type,
+    actorId,
+    actorUsername: actorUsername ?? "",
+    recipeId,
+    dishName,
+    preview,
+    read: false,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  }).catch(() => {});
+
+  const recipientDoc = await db.collection("users").doc(recipientId).get();
+  const fcmToken = recipientDoc.data()?.fcmToken;
+  if (!fcmToken) return;
+
+  await admin.messaging().send({
+    token: fcmToken,
+    notification: { title, body },
+    data: { type, ...(recipeId ? { recipeId } : {}), actorId },
+    apns: { payload: { aps: { sound: "default" } } },
+  }).catch(() => {});
+}
+
 // Notify a user when someone follows them
 exports.onFollowCreated = onDocumentCreated("follows/{docId}", async (event) => {
   const data = event.data.data();
   const followerId  = data.followerId;
   const followingId = data.followingId;
 
-  const [followerDoc, followedDoc] = await Promise.all([
-    admin.firestore().collection("users").doc(followerId).get(),
-    admin.firestore().collection("users").doc(followingId).get(),
-  ]);
-
+  const followerDoc = await admin.firestore().collection("users").doc(followerId).get();
   const followerUsername = followerDoc.data()?.username ?? "Someone";
-  const fcmToken = followedDoc.data()?.fcmToken;
-  if (!fcmToken) return;
 
-  await admin.messaging().send({
-    token: fcmToken,
-    notification: {
-      title: "New follower",
-      body: `@${followerUsername} started following you.`,
-    },
-    data: { type: "follow", followerId },
-    apns: { payload: { aps: { sound: "default" } } },
+  await notifyUser(followingId, {
+    type: "follow",
+    actorId: followerId,
+    actorUsername: followerUsername,
+    title: "New follower",
+    body: `@${followerUsername} started following you.`,
   });
 });
 
-// Notify the original author when someone replates their recipe
+// Username changes — sweep the new name onto everything that denormalizes it:
+// the user's own recipes ("Plated by") and replate attributions on other
+// people's recipes. Commits in chunks to stay under the 500-write batch limit.
+exports.onUserUpdated = onDocumentUpdated("users/{userId}", async (event) => {
+  const before = event.data.before.data();
+  const after = event.data.after.data();
+  if (!before || !after || before.username === after.username) return;
+
+  const uid = event.params.userId;
+  const db = admin.firestore();
+
+  const [ownRecipes, replatesOfTheirs] = await Promise.all([
+    db.collection("recipes").where("userId", "==", uid).get(),
+    db.collection("recipes").where("replateMeta.originalUserId", "==", uid).get(),
+  ]);
+
+  const updates = [];
+  ownRecipes.docs.forEach((d) => updates.push({ ref: d.ref, data: { username: after.username } }));
+  replatesOfTheirs.docs.forEach((d) => updates.push({ ref: d.ref, data: { "replateMeta.originalUsername": after.username } }));
+
+  for (let i = 0; i < updates.length; i += 400) {
+    const batch = db.batch();
+    updates.slice(i, i + 400).forEach((u) => batch.update(u.ref, u.data));
+    await batch.commit();
+  }
+});
+
+// Likes — maintain the denormalized counter + recent likers on the recipe doc,
+// and notify the recipe owner. Doc ID is "{userId}_{recipeId}".
+exports.onLikeCreated = onDocumentCreated("likes/{docId}", async (event) => {
+  const data = event.data.data();
+  const { userId, username, recipeId } = data;
+  if (!userId || !recipeId) return;
+
+  const recipeRef = admin.firestore().collection("recipes").doc(recipeId);
+  const recipeSnap = await recipeRef.get();
+  if (!recipeSnap.exists) return;
+
+  await recipeRef.update({
+    likeCount: admin.firestore.FieldValue.increment(1),
+    recentLikers: admin.firestore.FieldValue.arrayUnion({ userId, username: username ?? "" }),
+  }).catch(() => {});
+
+  // Notify the owner (never for self-likes)
+  const recipe = recipeSnap.data();
+  if (recipe.userId === userId) return;
+
+  await notifyUser(recipe.userId, {
+    type: "like",
+    actorId: userId,
+    actorUsername: username,
+    recipeId,
+    dishName: recipe.dishName,
+    title: "New like",
+    body: `@${username ?? "Someone"} liked your ${recipe.dishName}.`,
+  });
+});
+
+exports.onLikeDeleted = onDocumentDeleted("likes/{docId}", async (event) => {
+  const data = event.data.data();
+  const { userId, username, recipeId } = data;
+  if (!userId || !recipeId) return;
+
+  await admin.firestore().collection("recipes").doc(recipeId).update({
+    likeCount: admin.firestore.FieldValue.increment(-1),
+    recentLikers: admin.firestore.FieldValue.arrayRemove({ userId, username: username ?? "" }),
+  }).catch(() => {});
+});
+
+// Saves — aggregate count on the recipe + a notification to the owner.
+exports.onSaveCreated = onDocumentCreated("saved/{docId}", async (event) => {
+  const data = event.data.data();
+  const recipeId = data?.recipeId;
+  const saverId = data?.userId;
+  if (!recipeId) return;
+
+  const db = admin.firestore();
+  const recipeSnap = await db.collection("recipes").doc(recipeId).get();
+
+  await db.collection("recipes").doc(recipeId).update({
+    saveCount: admin.firestore.FieldValue.increment(1),
+  }).catch(() => {});
+
+  if (!recipeSnap.exists || !saverId) return;
+  const recipe = recipeSnap.data();
+  if (recipe.userId === saverId) return;
+
+  const saverDoc = await db.collection("users").doc(saverId).get();
+  const saverUsername = saverDoc.data()?.username ?? "Someone";
+
+  await notifyUser(recipe.userId, {
+    type: "save",
+    actorId: saverId,
+    actorUsername: saverUsername,
+    recipeId,
+    dishName: recipe.dishName,
+    title: "Recipe saved",
+    body: `@${saverUsername} saved your ${recipe.dishName}.`,
+  });
+});
+
+exports.onSaveDeleted = onDocumentDeleted("saved/{docId}", async (event) => {
+  const recipeId = event.data.data()?.recipeId;
+  if (!recipeId) return;
+  await admin.firestore().collection("recipes").doc(recipeId).update({
+    saveCount: admin.firestore.FieldValue.increment(-1),
+  }).catch(() => {});
+});
+
+// Notify the original author when someone replates their recipe,
+// and keep the original's replateCount current.
 exports.onReplateCreated = onDocumentCreated("recipes/{recipeId}", async (event) => {
   const data = event.data.data();
   if (!data.replateMeta) return;
 
   const replaterUsername = data.username;
+  const originalRecipeId = data.replateMeta.originalRecipeId;
   const originalUserId  = data.replateMeta.originalUserId;
   const originalDishName = data.replateMeta.originalDishName;
+
+  if (originalRecipeId) {
+    await admin.firestore().collection("recipes").doc(originalRecipeId).update({
+      replateCount: admin.firestore.FieldValue.increment(1),
+    }).catch(() => {});
+  }
 
   // Don't notify when someone replates their own recipe
   if (data.userId === originalUserId) return;
 
-  const originalUserDoc = await admin.firestore().collection("users").doc(originalUserId).get();
-  const fcmToken = originalUserDoc.data()?.fcmToken;
-  if (!fcmToken) return;
-
-  await admin.messaging().send({
-    token: fcmToken,
-    notification: {
-      title: "Your recipe was replated",
-      body: `@${replaterUsername} cooked your ${originalDishName}.`,
-    },
-    data: { type: "replate", recipeId: event.params.recipeId },
-    apns: { payload: { aps: { sound: "default" } } },
+  await notifyUser(originalUserId, {
+    type: "replate",
+    actorId: data.userId,
+    actorUsername: replaterUsername,
+    recipeId: event.params.recipeId,
+    dishName: originalDishName,
+    title: "Your recipe was replated",
+    body: `@${replaterUsername} cooked your ${originalDishName}.`,
   });
+});
+
+// Recipe deletion — decrement the original's replateCount if this was a
+// replate, and sweep the recipe's comments and likes so nothing dangles.
+exports.onRecipeDeleted = onDocumentDeleted("recipes/{recipeId}", async (event) => {
+  const data = event.data.data();
+  const db = admin.firestore();
+
+  const originalRecipeId = data?.replateMeta?.originalRecipeId;
+  if (originalRecipeId) {
+    await db.collection("recipes").doc(originalRecipeId).update({
+      replateCount: admin.firestore.FieldValue.increment(-1),
+    }).catch(() => {});
+  }
+
+  const [comments, likes] = await Promise.all([
+    db.collection("comments").where("recipeId", "==", event.params.recipeId).get(),
+    db.collection("likes").where("recipeId", "==", event.params.recipeId).get(),
+  ]);
+  const refs = [...comments.docs, ...likes.docs].map((d) => d.ref);
+  for (let i = 0; i < refs.length; i += 400) {
+    const batch = db.batch();
+    refs.slice(i, i + 400).forEach((ref) => batch.delete(ref));
+    await batch.commit();
+  }
+});
+
+// Comments — maintain the count on the recipe, notify the owner, and notify
+// the parent comment's author for replies (deduped when they're the owner).
+exports.onCommentCreated = onDocumentCreated("comments/{commentId}", async (event) => {
+  const data = event.data.data();
+  const { recipeId, userId, username, text, parentCommentId } = data;
+  if (!recipeId || !userId) return;
+
+  const db = admin.firestore();
+  const recipeSnap = await db.collection("recipes").doc(recipeId).get();
+
+  await db.collection("recipes").doc(recipeId).update({
+    commentCount: admin.firestore.FieldValue.increment(1),
+  }).catch(() => {});
+
+  if (!recipeSnap.exists) return;
+  const recipe = recipeSnap.data();
+  const previewText = String(text ?? "").slice(0, 80);
+
+  // Reply → notify the parent comment's author
+  let parentAuthorId = null;
+  if (parentCommentId) {
+    const parentSnap = await db.collection("comments").doc(parentCommentId).get();
+    parentAuthorId = parentSnap.data()?.userId ?? null;
+    if (parentAuthorId && parentAuthorId !== userId) {
+      await notifyUser(parentAuthorId, {
+        type: "reply",
+        actorId: userId,
+        actorUsername: username,
+        recipeId,
+        dishName: recipe.dishName,
+        preview: previewText,
+        title: "New reply",
+        body: `@${username ?? "Someone"} replied to your comment: "${previewText}"`,
+      });
+    }
+  }
+
+  // Notify the recipe owner (skip self-comments and skip if they were
+  // already notified as the parent author)
+  if (recipe.userId === userId || recipe.userId === parentAuthorId) return;
+
+  await notifyUser(recipe.userId, {
+    type: "comment",
+    actorId: userId,
+    actorUsername: username,
+    recipeId,
+    dishName: recipe.dishName,
+    preview: previewText,
+    title: "New comment",
+    body: `@${username ?? "Someone"} on your ${recipe.dishName}: "${previewText}"`,
+  });
+});
+
+exports.onCommentDeleted = onDocumentDeleted("comments/{commentId}", async (event) => {
+  const recipeId = event.data.data()?.recipeId;
+  if (!recipeId) return;
+  await admin.firestore().collection("recipes").doc(recipeId).update({
+    commentCount: admin.firestore.FieldValue.increment(-1),
+  }).catch(() => {});
+});
+
+// Drafts an ingredient list from the user's written cooking steps.
+// Quantities are copied only when the text states them — never invented.
+exports.extractIngredients = onCall({ secrets: [OPENAI_API_KEY], invoker: "public" }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Sign in to draft ingredients.");
+  }
+
+  const steps = String(request.data?.steps ?? "").trim();
+  if (!steps) {
+    throw new HttpsError("invalid-argument", "No steps provided.");
+  }
+  const dishName = String(request.data?.dishName ?? "").trim();
+
+  const systemMessage = `You extract ingredient lists from home-cooking instructions.
+
+RULES:
+- List every distinct food or drink ingredient the instructions mention or clearly use.
+- quantity: copy the amount ONLY when the text states one ("3 tbsp soy sauce" → "3 tbsp"). If no amount is stated, use "".
+- NEVER invent, guess, or infer amounts that are not written.
+- Each ingredient appears once. If it is mentioned multiple times with stated amounts in the same unit, sum them; otherwise keep the first stated amount.
+- Exclude plain water unless it is a core component (broth and stock DO count as ingredients).
+- Exclude equipment, techniques, temperatures, and serving suggestions.
+- Keep names short and natural, preserving the cook's wording ("green onion", not "2 stalks of fresh sliced green onion").
+- List ingredients in the order they first appear.
+
+Return ONLY this JSON shape: {"ingredients": [{"name": "...", "quantity": "..."}]}`;
+
+  const userPrompt =
+    (dishName ? `Dish name: "${dishName}".\n` : "") +
+    `Cooking steps:\n${steps}\n\nExtract the ingredient list as JSON.`;
+
+  let response;
+  try {
+    response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${OPENAI_API_KEY.value()}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemMessage },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0,
+        max_tokens: 700,
+        response_format: { type: "json_object" },
+      }),
+    });
+  } catch (err) {
+    throw new HttpsError("unavailable", "Couldn't reach the ingredient drafter.");
+  }
+
+  if (!response.ok) {
+    throw new HttpsError("internal", "The ingredient drafter returned an error.");
+  }
+
+  const completion = await response.json();
+  const content = completion.choices?.[0]?.message?.content ?? "";
+
+  let parsed;
+  try {
+    parsed = JSON.parse(content);
+  } catch (err) {
+    throw new HttpsError("internal", "Couldn't read the ingredient draft.");
+  }
+
+  const list = Array.isArray(parsed.ingredients) ? parsed.ingredients : [];
+  return {
+    ingredients: list
+      .filter((i) => typeof i?.name === "string" && i.name.trim() !== "")
+      .slice(0, 30)
+      .map((i) => ({
+        name: String(i.name).trim(),
+        quantity: typeof i.quantity === "string" ? i.quantity.trim() : "",
+      })),
+  };
 });
 
 exports.estimateMacros = onCall({ secrets: [OPENAI_API_KEY], invoker: "public" }, async (request) => {

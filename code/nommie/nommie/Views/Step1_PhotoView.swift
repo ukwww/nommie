@@ -25,6 +25,9 @@ struct Step1_PhotoView: View {
                         .aspectRatio(1.0, contentMode: .fit)
                         .clipped()
                         .clipShape(RoundedRectangle(cornerRadius: NommieTheme.CornerRadius.card))
+                        // .clipped() only clips drawing, not hit-testing — a
+                        // non-square image's overflow would swallow every tap.
+                        .allowsHitTesting(false)
                         .padding(.horizontal, NommieTheme.Padding.large)
 
                     Button(action: { showingPicker = true }) {

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MainTabView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
+    @StateObject private var notificationsVM = NotificationsViewModel()
     @State private var deepLinkedRecipe: Recipe? = nil
     @State private var deepLinkedUsername: IdentifiableDeepLinkUsername? = nil
     private let userService = UserService()
@@ -18,18 +19,37 @@ struct MainTabView: View {
     }
 
     var body: some View {
-        TabView {
-            ProfileView()
-                .tabItem {
-                    Label("My Plates", systemImage: "fork.knife")
-                }
+        ZStack(alignment: .top) {
+            TabView {
+                HomeFeedView()
+                    .tabItem {
+                        Label("Discover", systemImage: "frying.pan")
+                    }
 
-            HomeFeedView()
-                .tabItem {
-                    Label("Discover", systemImage: "sparkles")
+                ProfileView()
+                    .tabItem {
+                        Label("My Plates", systemImage: "fork.knife")
+                    }
+            }
+            .accentColor(.nommieGreen)
+
+            // In-app toast for fresh activity
+            if let toast = notificationsVM.toast {
+                NotificationToast(notification: toast) {
+                    notificationsVM.dismissToast()
                 }
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .zIndex(5)
+            }
         }
-        .accentColor(.nommieGreen)
+        .environmentObject(notificationsVM)
+        .onReceive(authViewModel.$currentNommieUser) { user in
+            if let id = user?.id {
+                notificationsVM.startListening(userId: id)
+            } else {
+                notificationsVM.stopListening()
+            }
+        }
         .sheet(item: $deepLinkedRecipe) { recipe in
             RecipeDetailView(
                 recipe: recipe,
@@ -67,9 +87,43 @@ struct MainTabView: View {
     }
 }
 
+// Identity must be the value itself: a fresh UUID per render makes SwiftUI
+// think the item changed and dismiss whatever it's presenting.
 private struct IdentifiableDeepLinkUsername: Identifiable {
-    let id = UUID()
     let value: String
+    var id: String { value }
+}
+
+// MARK: - Notification Toast
+
+struct NotificationToast: View {
+    let notification: AppNotification
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 10) {
+                Image(systemName: notification.iconName)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(width: 30, height: 30)
+                    .background(Circle().fill(Color.white.opacity(0.2)))
+
+                Text(notification.message)
+                    .font(Font.custom("Nunito-SemiBold", size: 13))
+                    .foregroundColor(.white)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 11)
+            .background(Capsule().fill(Color.nommieGreen))
+            .shadow(color: Color.black.opacity(0.18), radius: 12, x: 0, y: 5)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .padding(.horizontal, 24)
+        .padding(.top, 6)
+    }
 }
 
 #Preview {

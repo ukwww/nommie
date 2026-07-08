@@ -7,13 +7,19 @@ struct NommieUser: Identifiable, Codable {
     var email: String
     var createdAt: Date
     var exportCount: Int
+    var photoURL: String
+    var bio: String
+    var usernameChangedAt: Date?
 
-    init(id: String, username: String, email: String, createdAt: Date = Date(), exportCount: Int = 0) {
+    init(id: String, username: String, email: String, createdAt: Date = Date(), exportCount: Int = 0, photoURL: String = "", bio: String = "", usernameChangedAt: Date? = nil) {
         self.id = id
         self.username = username
         self.email = email
         self.createdAt = createdAt
         self.exportCount = exportCount
+        self.photoURL = photoURL
+        self.bio = bio
+        self.usernameChangedAt = usernameChangedAt
     }
 
     init?(from dictionary: [String: Any]) {
@@ -29,5 +35,8 @@ struct NommieUser: Identifiable, Codable {
         self.email = email
         self.createdAt = timestamp.dateValue()
         self.exportCount = dictionary["exportCount"] as? Int ?? 0
+        self.photoURL = dictionary["photoURL"] as? String ?? ""
+        self.bio = dictionary["bio"] as? String ?? ""
+        self.usernameChangedAt = (dictionary["usernameChangedAt"] as? Timestamp)?.dateValue()
     }
 }

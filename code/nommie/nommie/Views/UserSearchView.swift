@@ -73,14 +73,12 @@ struct UserSearchView: View {
                         ForEach(results) { user in
                             Button(action: { selectedUsername = user.username }) {
                                 HStack(spacing: 12) {
-                                    ZStack {
-                                        Circle()
-                                            .fill(CardPalettes.paletteForUser(user.id).accent.opacity(0.15))
-                                            .frame(width: 40, height: 40)
-                                        Text(String(user.username.prefix(1)).uppercased())
-                                            .font(Font.custom("Nunito-Bold", size: 16))
-                                            .foregroundColor(CardPalettes.paletteForUser(user.id).accent)
-                                    }
+                                    AvatarView(
+                                        userId: user.id,
+                                        username: user.username,
+                                        photoURL: user.photoURL,
+                                        size: 40
+                                    )
                                     Text("@\(user.username)")
                                         .font(Font.custom("Nunito-SemiBold", size: 16))
                                         .foregroundColor(.nommieBrown)
@@ -141,9 +139,11 @@ struct UserSearchView: View {
     }
 }
 
+// Identity must be the value itself: a fresh UUID per render makes SwiftUI
+// think the item changed and dismiss whatever it's presenting.
 private struct IdentifiableUsername: Identifiable {
-    let id = UUID()
     let value: String
+    var id: String { value }
 }
 
 #Preview {

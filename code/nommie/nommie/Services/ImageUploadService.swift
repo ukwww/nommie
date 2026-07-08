@@ -24,6 +24,23 @@ class ImageUploadService {
     func deleteImage(recipeId: String) async throws {
         try await storage.reference().child("recipe_images/\(recipeId).jpg").delete()
     }
+
+    /// Profile avatar — square-cropped, downscaled to 600px, stored at a
+    /// deterministic per-user path so re-uploads replace the old photo.
+    func uploadProfileImage(_ image: UIImage, userId: String) async throws -> String {
+        let squared = ImageCropPickerView.Coordinator.squareCropped(image, maxSide: 600)
+        guard let imageData = squared.jpegData(compressionQuality: 0.85) else {
+            throw ImageUploadError.compressionFailed
+        }
+
+        let imageRef = storage.reference().child("profile_images/\(userId).jpg")
+        let metadata = StorageMetadata()
+        metadata.contentType = "image/jpeg"
+
+        _ = try await imageRef.putDataAsync(imageData, metadata: metadata)
+        let downloadURL = try await imageRef.downloadURL()
+        return downloadURL.absoluteString
+    }
 }
 
 enum ImageUploadError: LocalizedError {

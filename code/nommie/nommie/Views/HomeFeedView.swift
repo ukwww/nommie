@@ -2,12 +2,12 @@ import SwiftUI
 
 struct HomeFeedView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
+    @EnvironmentObject var notificationsVM: NotificationsViewModel
     @StateObject private var viewModel = HomeFeedViewModel()
     @State private var showingRecipeCreation = false
-    @State private var showingUserSearch = false
-    @State private var selectedRecipe: Recipe? = nil
     @State private var replateSource: Recipe? = nil
-    @State private var selectedUsername: String? = nil
+    // One sheet route — stacking .sheet modifiers dismisses them at random.
+    @State private var activeSheet: FeedSheet? = nil
     private var currentUserId: String? { authViewModel.currentNommieUser?.id }
 
     var body: some View {
@@ -42,7 +42,7 @@ struct HomeFeedView: View {
                                 GhostFeedCard()
 
                                 FeedEmptyState(
-                                    onFindFriends: { showingUserSearch = true },
+                                    onFindFriends: { activeSheet = .search },
                                     onLogPlate: { showingRecipeCreation = true }
                                 )
                                 .padding(.vertical, 28)
@@ -54,15 +54,31 @@ struct HomeFeedView: View {
                     } else {
                         LazyVStack(spacing: 18) {
                             ForEach(viewModel.filteredRecipes) { recipe in
-                                Button(action: { selectedRecipe = recipe }) {
+                                Button(action: { activeSheet = .recipe(recipe) }) {
                                     RecipeCardView(
                                         recipe: recipe,
                                         compact: true,
                                         currentUserId: currentUserId,
+                                        likedByMe: viewModel.likedRecipeIds.contains(recipe.id),
+                                        followingIds: viewModel.followingIdSet,
+                                        authorPhotoURL: viewModel.authorPhotoById[recipe.userId],
                                         onUsernameTap: {
                                             if recipe.userId != currentUserId {
-                                                selectedUsername = recipe.username
+                                                activeSheet = .profile(recipe.username)
                                             }
+                                        },
+                                        onLikeTap: {
+                                            viewModel.toggleLike(
+                                                recipeId: recipe.id,
+                                                userId: currentUserId,
+                                                username: authViewModel.currentNommieUser?.username
+                                            )
+                                        },
+                                        onLikerTap: { likerUsername in
+                                            activeSheet = .profile(likerUsername)
+                                        },
+                                        onCommentTap: {
+                                            activeSheet = .comments(recipe)
                                         }
                                     )
                                 }
@@ -76,15 +92,36 @@ struct HomeFeedView: View {
             }
 
             // Sticky header
-            HStack(alignment: .center) {
+            HStack(alignment: .center, spacing: 14) {
                 Text("nommie ")
                     .font(Font.custom("Caveat-Bold", size: 36))
                     .foregroundColor(.nommieGreen)
                 Spacer()
+
                 if let username = authViewModel.currentNommieUser?.username {
                     Text("@\(username)")
                         .font(Font.custom("Nunito-Regular", size: 14))
                         .foregroundColor(.nommieBrown.opacity(0.55))
+                }
+
+                // Activity bell with unread badge
+                Button(action: { activeSheet = .notifications }) {
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: notificationsVM.unreadCount > 0 ? "bell.fill" : "bell")
+                            .font(.system(size: 19))
+                            .foregroundColor(.nommieBrown.opacity(0.7))
+                            .frame(width: 32, height: 32)
+
+                        if notificationsVM.unreadCount > 0 {
+                            Text(notificationsVM.unreadCount > 9 ? "9+" : "\(notificationsVM.unreadCount)")
+                                .font(Font.custom("Nunito-Bold", size: 10))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 4)
+                                .frame(minWidth: 16, minHeight: 16)
+                                .background(Capsule().fill(Color.nommieBlush))
+                                .offset(x: 3, y: -2)
+                        }
+                    }
                 }
             }
             .padding(.horizontal, 20)
@@ -93,25 +130,29 @@ struct HomeFeedView: View {
             .background(Color.nommieBackground)
 
         }
-        .sheet(isPresented: $showingUserSearch) {
-            UserSearchView().environmentObject(authViewModel)
-        }
-        .sheet(item: $selectedRecipe) { recipe in
-            let isOwner = recipe.userId == currentUserId
-            RecipeDetailView(
-                recipe: recipe,
-                isOwner: isOwner,
-                onDelete: { viewModel.removeRecipe(id: recipe.id) },
-                onReplate: { source in replateSource = source }
-            )
-            .environmentObject(authViewModel)
-        }
-        .sheet(item: Binding(
-            get: { selectedUsername.map { IdentifiableString(value: $0) } },
-            set: { selectedUsername = $0?.value }
-        )) { wrapper in
-            OtherUserProfileView(username: wrapper.value)
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .search:
+                UserSearchView().environmentObject(authViewModel)
+            case .recipe(let recipe):
+                RecipeDetailView(
+                    recipe: recipe,
+                    isOwner: recipe.userId == currentUserId,
+                    onDelete: { viewModel.removeRecipe(id: recipe.id) },
+                    onReplate: { source in replateSource = source }
+                )
                 .environmentObject(authViewModel)
+            case .profile(let username):
+                OtherUserProfileView(username: username)
+                    .environmentObject(authViewModel)
+            case .notifications:
+                NotificationsView()
+                    .environmentObject(authViewModel)
+                    .environmentObject(notificationsVM)
+            case .comments(let recipe):
+                CommentsView(recipe: recipe)
+                    .environmentObject(authViewModel)
+            }
         }
         .fullScreenCover(isPresented: $showingRecipeCreation) {
             RecipeCreationView(isPresented: $showingRecipeCreation)
@@ -340,10 +381,23 @@ struct FeedEmptyState: View {
     }
 }
 
-// Helper to make String conform to Identifiable for sheet(item:)
-private struct IdentifiableString: Identifiable {
-    let id = UUID()
-    let value: String
+// The feed's single sheet route — one binding, no modifier conflicts.
+private enum FeedSheet: Identifiable {
+    case search
+    case recipe(Recipe)
+    case profile(String)
+    case notifications
+    case comments(Recipe)
+
+    var id: String {
+        switch self {
+        case .search: return "search"
+        case .recipe(let recipe): return "recipe_\(recipe.id)"
+        case .profile(let username): return "profile_\(username)"
+        case .notifications: return "notifications"
+        case .comments(let recipe): return "comments_\(recipe.id)"
+        }
+    }
 }
 
 #Preview {

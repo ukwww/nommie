@@ -9,15 +9,18 @@ struct RecipeDetailView: View {
 
     @EnvironmentObject var authViewModel: AuthViewModel
     @Environment(\.dismiss) private var dismiss
-    @State private var showingExport = false
     @State private var showingDeleteConfirm = false
-    @State private var showingEditSheet = false
     @State private var showingReportDialog = false
     @State private var showingReportThanks = false
     @State private var isSaved: Bool = false
     @State private var isSaveLoading: Bool = false
+    @State private var isLiked: Bool = false
+    @State private var likeCount: Int = 0
     @State private var perServing: Bool = false
-    @State private var originalRecipe: Recipe? = nil
+    // Single sheet + single cover routes — stacked presentation modifiers
+    // dismiss each other at random.
+    @State private var detailSheet: DetailSheet? = nil
+    @State private var detailCover: DetailCover? = nil
 
     private let userService = UserService()
 
@@ -48,7 +51,7 @@ struct RecipeDetailView: View {
                     Spacer()
                     if isOwner {
                         HStack(spacing: 0) {
-                            Button(action: { showingEditSheet = true }) {
+                            Button(action: { detailCover = .edit }) {
                                 Image(systemName: "pencil")
                                     .foregroundColor(.nommieBrown.opacity(0.35))
                                     .font(.system(size: 17))
@@ -76,15 +79,20 @@ struct RecipeDetailView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
 
-                        // Replate attribution header
+                        // Replate attribution header — usernames open profiles
                         if let meta = recipe.replateMeta {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Replated by: @\(recipe.username)")
-                                    .font(Font.custom("Caveat-Regular", size: 19))
-                                    .foregroundColor(cardAccent)
+                                Button(action: { openProfile(recipe.username) }) {
+                                    Text("Replated by: @\(recipe.username)")
+                                        .font(Font.custom("Caveat-Regular", size: 19))
+                                        .foregroundColor(cardAccent)
+                                }
+                                .buttonStyle(PlainButtonStyle())
                                 Button(action: {
                                     Task {
-                                        originalRecipe = try? await userService.fetchRecipe(id: meta.originalRecipeId)
+                                        if let original = try? await userService.fetchRecipe(id: meta.originalRecipeId) {
+                                            await MainActor.run { detailSheet = .original(original) }
+                                        }
                                     }
                                 }) {
                                     Text("↻ from @\(meta.originalUsername) · \"\(meta.originalDishName)\"")
@@ -97,12 +105,15 @@ struct RecipeDetailView: View {
                             .padding(.top, 16)
                             .padding(.bottom, 10)
                         } else {
-                            Text("Plated by: @\(recipe.username)")
-                                .font(Font.custom("Caveat-Regular", size: 19))
-                                .foregroundColor(cardAccent)
-                                .padding(.horizontal, 16)
-                                .padding(.top, 16)
-                                .padding(.bottom, 10)
+                            Button(action: { openProfile(recipe.username) }) {
+                                Text("Plated by: @\(recipe.username)")
+                                    .font(Font.custom("Caveat-Regular", size: 19))
+                                    .foregroundColor(cardAccent)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .padding(.horizontal, 16)
+                            .padding(.top, 16)
+                            .padding(.bottom, 10)
                         }
 
                         // Image — square crop with rounded corners
@@ -172,9 +183,9 @@ struct RecipeDetailView: View {
                         .padding(.horizontal, 16)
                         .padding(.bottom, 16)
 
-                        // Ingredients
+                        // Ingredients — compact so the steps below stay the star
                         if !recipe.ingredients.isEmpty {
-                            VStack(alignment: .leading, spacing: 6) {
+                            VStack(alignment: .leading, spacing: 4) {
                                 Text("Ingredients")
                                     .font(Font.custom("Lora-SemiBold", size: 15))
                                     .foregroundColor(.nommieBrown)
@@ -184,18 +195,44 @@ struct RecipeDetailView: View {
                                     HStack(alignment: .top, spacing: 8) {
                                         Circle()
                                             .fill(cardAccent)
-                                            .frame(width: 5, height: 5)
+                                            .frame(width: 4, height: 4)
                                             .padding(.top, 7)
                                         HStack(spacing: 3) {
                                             if !ingredient.quantity.isEmpty {
                                                 Text(ingredient.quantity)
-                                                    .font(Font.custom("Nunito-Regular", size: 14))
+                                                    .font(Font.custom("Nunito-Regular", size: 13))
                                                     .foregroundColor(cardAccent)
                                             }
                                             Text(ingredient.name)
-                                                .font(Font.custom("Nunito-Regular", size: 14))
+                                                .font(Font.custom("Nunito-Regular", size: 13))
                                                 .foregroundColor(.nommieBrown.opacity(0.8))
                                         }
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 14)
+                        }
+
+                        // Steps
+                        if !recipe.steps.isEmpty {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("Steps")
+                                    .font(Font.custom("Lora-SemiBold", size: 15))
+                                    .foregroundColor(.nommieBrown)
+                                    .padding(.bottom, 2)
+
+                                ForEach(Array(recipe.steps.enumerated()), id: \.offset) { index, step in
+                                    HStack(alignment: .top, spacing: 10) {
+                                        Text("\(index + 1)")
+                                            .font(Font.custom("Nunito-Bold", size: 12))
+                                            .foregroundColor(cardAccent)
+                                            .frame(width: 20, height: 20)
+                                            .background(Circle().fill(cardAccent.opacity(0.12)))
+                                        Text(step)
+                                            .font(Font.custom("Nunito-Regular", size: 14))
+                                            .foregroundColor(.nommieBrown.opacity(0.85))
+                                            .fixedSize(horizontal: false, vertical: true)
                                     }
                                 }
                             }
@@ -237,14 +274,68 @@ struct RecipeDetailView: View {
                             .padding(.bottom, 14)
                         }
 
-                        // Watermark
-                        Text("nommie")
-                            .font(Font.custom("Nunito-Regular", size: 11))
-                            .italic()
-                            .foregroundColor(.nommieBrown.opacity(0.3))
-                            .frame(maxWidth: .infinity, alignment: .trailing)
-                            .padding(.horizontal, 16)
-                            .padding(.bottom, 16)
+                        // Social row: like + comments (interactive), replates + saves (counts)
+                        HStack(spacing: 16) {
+                            Button(action: toggleLike) {
+                                HStack(spacing: 5) {
+                                    Image(systemName: isLiked ? "heart.fill" : "heart")
+                                        .font(.system(size: 17))
+                                        .foregroundColor(isLiked ? cardAccent : .nommieBrown.opacity(0.5))
+                                        .animation(.spring(response: 0.3, dampingFraction: 0.5), value: isLiked)
+                                    if likeCount > 0 {
+                                        Text("\(likeCount)")
+                                            .font(Font.custom("Nunito-SemiBold", size: 14))
+                                            .foregroundColor(.nommieBrown.opacity(0.65))
+                                    }
+                                }
+                            }
+                            .buttonStyle(PlainButtonStyle())
+
+                            Button(action: { detailSheet = .comments }) {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "bubble.left")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(.nommieBrown.opacity(0.5))
+                                    if recipe.commentCount > 0 {
+                                        Text("\(recipe.commentCount)")
+                                            .font(Font.custom("Nunito-SemiBold", size: 14))
+                                            .foregroundColor(.nommieBrown.opacity(0.65))
+                                    }
+                                }
+                            }
+                            .buttonStyle(PlainButtonStyle())
+
+                            HStack(spacing: 5) {
+                                Image(systemName: "arrow.2.squarepath")
+                                    .font(.system(size: 15))
+                                    .foregroundColor(.nommieBrown.opacity(0.5))
+                                if recipe.replateCount > 0 {
+                                    Text("\(recipe.replateCount)")
+                                        .font(Font.custom("Nunito-SemiBold", size: 14))
+                                        .foregroundColor(.nommieBrown.opacity(0.65))
+                                }
+                            }
+
+                            HStack(spacing: 5) {
+                                Image(systemName: recipe.saveCount > 0 ? "bookmark.fill" : "bookmark")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.nommieBrown.opacity(0.5))
+                                if recipe.saveCount > 0 {
+                                    Text("\(recipe.saveCount)")
+                                        .font(Font.custom("Nunito-SemiBold", size: 14))
+                                        .foregroundColor(.nommieBrown.opacity(0.65))
+                                }
+                            }
+
+                            Spacer()
+
+                            Text("nommie")
+                                .font(Font.custom("Nunito-Regular", size: 11))
+                                .italic()
+                                .foregroundColor(.nommieBrown.opacity(0.3))
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 16)
                     }
                     .frame(maxWidth: .infinity)
                     .background(cardBackground)
@@ -253,7 +344,9 @@ struct RecipeDetailView: View {
                     .shadow(color: Color.black.opacity(0.1), radius: 16, x: 0, y: 4)
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
-                    .padding(.bottom, 100)
+                    // Clearance for the fixed bottom bar: export button + caption
+                    // for owners, save/replate row otherwise.
+                    .padding(.bottom, isOwner ? 185 : 140)
                 }
             }
 
@@ -265,7 +358,7 @@ struct RecipeDetailView: View {
                             .font(Font.custom("Nunito-Regular", size: 13))
                             .foregroundColor(.nommieBrown.opacity(0.45))
 
-                        Button(action: { showingExport = true }) {
+                        Button(action: { detailSheet = .export }) {
                             VStack(spacing: 3) {
                                 HStack(spacing: 8) {
                                     Image(systemName: "square.and.arrow.up")
@@ -335,19 +428,36 @@ struct RecipeDetailView: View {
             .background(Color.nommieBackground.opacity(0.97))
         }
         .navigationBarHidden(true)
-        .sheet(isPresented: $showingExport) {
-            ExportBottomSheet(recipe: recipe, isPresented: $showingExport)
+        .sheet(item: $detailSheet) { sheet in
+            switch sheet {
+            case .export:
+                ExportBottomSheet(recipe: recipe, isPresented: Binding(
+                    get: { detailSheet != nil },
+                    set: { if !$0 { detailSheet = nil } }
+                ))
                 .environmentObject(authViewModel)
+            case .original(let original):
+                RecipeDetailView(recipe: original, isOwner: original.userId == authViewModel.currentNommieUser?.id)
+                    .environmentObject(authViewModel)
+            case .comments:
+                CommentsView(recipe: recipe)
+                    .environmentObject(authViewModel)
+            }
         }
-        .fullScreenCover(isPresented: $showingEditSheet) {
-            RecipeCreationView(isPresented: $showingEditSheet, editingRecipe: recipe)
+        .fullScreenCover(item: $detailCover) { cover in
+            switch cover {
+            case .edit:
+                RecipeCreationView(isPresented: Binding(
+                    get: { detailCover != nil },
+                    set: { if !$0 { detailCover = nil } }
+                ), editingRecipe: recipe)
                 .environmentObject(authViewModel)
+            case .profile(let username):
+                OtherUserProfileView(username: username)
+                    .environmentObject(authViewModel)
+            }
         }
-        .sheet(item: $originalRecipe) { original in
-            RecipeDetailView(recipe: original, isOwner: original.userId == authViewModel.currentNommieUser?.id)
-                .environmentObject(authViewModel)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .profileNeedsRefresh)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .recipeEdited)) { _ in
             dismiss()
         }
         .confirmationDialog("Report this recipe", isPresented: $showingReportDialog, titleVisibility: .visible) {
@@ -374,10 +484,32 @@ struct RecipeDetailView: View {
             Text("This will permanently delete \"\(recipe.dishName)\" and its photo.")
         }
         .task {
+            likeCount = recipe.likeCount
             if !isOwner, let uid = authViewModel.currentNommieUser?.id {
                 isSaved = (try? await userService.isSaved(userId: uid, recipeId: recipe.id)) ?? false
+                isLiked = (try? await userService.isLiked(userId: uid, recipeId: recipe.id)) ?? false
             }
         }
+    }
+
+    private func toggleLike() {
+        guard let user = authViewModel.currentNommieUser else { return }
+        if isLiked {
+            isLiked = false
+            likeCount = max(0, likeCount - 1)
+            Task { try? await userService.unlikeRecipe(userId: user.id, recipeId: recipe.id) }
+        } else {
+            isLiked = true
+            likeCount += 1
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            NommieAnalytics.likeTapped()
+            Task { try? await userService.likeRecipe(userId: user.id, username: user.username, recipeId: recipe.id) }
+        }
+    }
+
+    private func openProfile(_ username: String) {
+        guard username != authViewModel.currentNommieUser?.username else { return }
+        detailCover = .profile(username)
     }
 
     private func submitReport(reason: String) {
@@ -412,6 +544,33 @@ struct RecipeDetailView: View {
             } catch {
                 await MainActor.run { isSaveLoading = false }
             }
+        }
+    }
+}
+
+// Single routes for this screen's presentations.
+private enum DetailSheet: Identifiable {
+    case export
+    case original(Recipe)
+    case comments
+
+    var id: String {
+        switch self {
+        case .export: return "export"
+        case .original(let recipe): return "original_\(recipe.id)"
+        case .comments: return "comments"
+        }
+    }
+}
+
+private enum DetailCover: Identifiable {
+    case edit
+    case profile(String)
+
+    var id: String {
+        switch self {
+        case .edit: return "edit"
+        case .profile(let username): return "profile_\(username)"
         }
     }
 }

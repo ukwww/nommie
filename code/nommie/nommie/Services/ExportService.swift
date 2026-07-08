@@ -125,15 +125,16 @@ struct ExportCardView: View {
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
 
-            HStack(spacing: 3) {
-                ForEach(1...5, id: \.self) { i in
-                    Image(systemName: i <= recipe.prepTimeStars ? "star.fill" : "star")
-                        .font(.system(size: starSize))
-                        .foregroundColor(i <= recipe.prepTimeStars ? Color(hex: "E0A930") : .nommieBrown.opacity(0.2))
-                }
+            HStack(spacing: 4) {
+                QuarterClockIcon(quarters: recipe.prepTimeQuarters, size: starSize + 3, accent: accent)
                 Text(recipe.prepTimeLabel)
                     .font(Font.custom("Nunito-Regular", size: timeSize))
                     .foregroundColor(.nommieBrown.opacity(0.45))
+                if !recipe.steps.isEmpty {
+                    Text("· \(recipe.steps.count) \(recipe.steps.count == 1 ? "step" : "steps")")
+                        .font(Font.custom("Nunito-Regular", size: timeSize))
+                        .foregroundColor(.nommieBrown.opacity(0.45))
+                }
                 if recipe.servings > 1 {
                     Text("· \(recipe.servings) srv")
                         .font(Font.custom("Nunito-Regular", size: timeSize))

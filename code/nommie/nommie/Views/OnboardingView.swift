@@ -207,11 +207,7 @@ struct OnboardingCardIllustration: View {
                     .padding(.bottom, 5)
 
                 HStack(spacing: 3) {
-                    ForEach(1...5, id: \.self) { i in
-                        Image(systemName: i <= 3 ? "star.fill" : "star")
-                            .font(.system(size: 8))
-                            .foregroundColor(i <= 3 ? Color(hex: "E0A930") : OBTheme.accent.opacity(0.2))
-                    }
+                    QuarterClockIcon(quarters: 3, size: 10, accent: OBTheme.accent)
                     Text("~45 min")
                         .font(Font.custom("Nunito-Regular", size: 8))
                         .foregroundColor(.nommieBrown.opacity(0.45))
@@ -371,11 +367,7 @@ struct OnboardingReplateIllustration: View {
                     .padding(.bottom, 4)
 
                 HStack(spacing: 2) {
-                    ForEach(1...5, id: \.self) { i in
-                        Image(systemName: i <= 3 ? "star.fill" : "star")
-                            .font(.system(size: 7))
-                            .foregroundColor(i <= 3 ? Color(hex: "E0A930") : OBTheme.accent.opacity(0.2))
-                    }
+                    QuarterClockIcon(quarters: 3, size: 9, accent: OBTheme.accent)
                 }
                 .padding(.horizontal, 10)
                 .padding(.bottom, 6)

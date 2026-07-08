@@ -82,6 +82,22 @@ class UserService {
             .getDocuments()
         for doc in savedSnapshot.documents { try await doc.reference.delete() }
 
+        // Their comments, likes, and inbound notifications
+        let commentsSnapshot = try await db.collection("comments")
+            .whereField("userId", isEqualTo: uid)
+            .getDocuments()
+        for doc in commentsSnapshot.documents { try? await doc.reference.delete() }
+
+        let likesSnapshot = try await db.collection("likes")
+            .whereField("userId", isEqualTo: uid)
+            .getDocuments()
+        for doc in likesSnapshot.documents { try? await doc.reference.delete() }
+
+        let notificationsSnapshot = try await db.collection("notifications")
+            .whereField("recipientId", isEqualTo: uid)
+            .getDocuments()
+        for doc in notificationsSnapshot.documents { try? await doc.reference.delete() }
+
         try await db.collection("users").document(uid).delete()
     }
 
@@ -126,7 +142,15 @@ class UserService {
             .whereField("followingId", isEqualTo: userId)
             .getDocuments()
         let ids = snap.documents.compactMap { $0.data()["followerId"] as? String }
-        return try await fetchUsers(ids: ids)
+        let users = try await fetchUsers(ids: ids)
+
+        // Self-heal: follow docs pointing at deleted accounts make counts
+        // disagree with lists. Remove them as we find them.
+        let foundIds = Set(users.map { $0.id })
+        for missingId in Set(ids).subtracting(foundIds) {
+            try? await db.collection("follows").document("\(missingId)_\(userId)").delete()
+        }
+        return users
     }
 
     func fetchFollowing(userId: String) async throws -> [NommieUser] {
@@ -134,7 +158,20 @@ class UserService {
             .whereField("followerId", isEqualTo: userId)
             .getDocuments()
         let ids = snap.documents.compactMap { $0.data()["followingId"] as? String }
-        return try await fetchUsers(ids: ids)
+        let users = try await fetchUsers(ids: ids)
+
+        let foundIds = Set(users.map { $0.id })
+        for missingId in Set(ids).subtracting(foundIds) {
+            try? await db.collection("follows").document("\(userId)_\(missingId)").delete()
+        }
+        return users
+    }
+
+    /// Batched profile lookup keyed by user id — used to hydrate avatars for
+    /// feed authors, follower lists, and comment threads.
+    func fetchUserMap(ids: [String]) async throws -> [String: NommieUser] {
+        let users = try await fetchUsers(ids: Array(Set(ids)))
+        return Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) })
     }
 
     private func fetchUsers(ids: [String]) async throws -> [NommieUser] {
@@ -190,6 +227,49 @@ class UserService {
             .whereField("blockerId", isEqualTo: blockerId)
             .getDocuments()
         return Set(snapshot.documents.compactMap { $0.data()["blockedId"] as? String })
+    }
+
+    // MARK: - Likes
+
+    func likeRecipe(userId: String, username: String, recipeId: String) async throws {
+        let docId = "\(userId)_\(recipeId)"
+        try await db.collection("likes").document(docId).setData([
+            "userId": userId,
+            "username": username,
+            "recipeId": recipeId,
+            "likedAt": Timestamp(date: Date())
+        ])
+    }
+
+    func unlikeRecipe(userId: String, recipeId: String) async throws {
+        let docId = "\(userId)_\(recipeId)"
+        try await db.collection("likes").document(docId).delete()
+    }
+
+    func isLiked(userId: String, recipeId: String) async throws -> Bool {
+        let doc = try await db.collection("likes").document("\(userId)_\(recipeId)").getDocument()
+        return doc.exists
+    }
+
+    /// Which of these recipes has the user liked? Batched by deterministic doc ID.
+    func fetchLikedRecipeIds(userId: String, recipeIds: [String]) async throws -> Set<String> {
+        guard !recipeIds.isEmpty else { return [] }
+        let docIds = recipeIds.map { "\(userId)_\($0)" }
+        var liked: Set<String> = []
+        let chunks = stride(from: 0, to: docIds.count, by: 30).map {
+            Array(docIds[$0..<min($0 + 30, docIds.count)])
+        }
+        for chunk in chunks {
+            let snap = try await db.collection("likes")
+                .whereField(FieldPath.documentID(), in: chunk)
+                .getDocuments()
+            for doc in snap.documents {
+                if let recipeId = doc.data()["recipeId"] as? String {
+                    liked.insert(recipeId)
+                }
+            }
+        }
+        return liked
     }
 
     // MARK: - Save / Bookmark

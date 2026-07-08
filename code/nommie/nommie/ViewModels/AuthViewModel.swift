@@ -173,6 +173,92 @@ class AuthViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Profile photo
+
+    @Published var isUploadingAvatar: Bool = false
+
+    func updateProfilePhoto(_ image: UIImage) async {
+        guard let uid = currentNommieUser?.id else { return }
+        await MainActor.run { isUploadingAvatar = true }
+        do {
+            let url = try await ImageUploadService().uploadProfileImage(image, userId: uid)
+            try await Firestore.firestore().collection("users").document(uid)
+                .updateData(["photoURL": url])
+            await MainActor.run {
+                currentNommieUser?.photoURL = url
+                isUploadingAvatar = false
+            }
+        } catch {
+            await MainActor.run {
+                errorMessage = "Couldn't update your photo. Please try again."
+                isUploadingAvatar = false
+            }
+        }
+    }
+
+    /// Changes the username — available names only, and locked for 30 days
+    /// after each change so it stays a deliberate decision. A cloud trigger
+    /// sweeps the new name onto existing recipes and replate attributions.
+    func updateUsername(_ newUsername: String) async -> Bool {
+        guard let user = currentNommieUser else { return false }
+
+        let lowered = newUsername.lowercased()
+        let cleaned = lowered.filter { $0.isLetter || $0.isNumber || $0 == "_" }
+        guard cleaned == lowered, cleaned.count >= 3, cleaned.count <= 20 else {
+            await MainActor.run {
+                errorMessage = "Usernames are 3–20 characters: letters, numbers, and underscores."
+            }
+            return false
+        }
+        guard cleaned != user.username else { return true }
+
+        if let lastChange = user.usernameChangedAt,
+           let nextAllowed = Calendar.current.date(byAdding: .day, value: 30, to: lastChange),
+           Date() < nextAllowed {
+            let days = max(1, Calendar.current.dateComponents([.day], from: Date(), to: nextAllowed).day ?? 1)
+            await MainActor.run {
+                errorMessage = "You can change your username again in \(days) \(days == 1 ? "day" : "days")."
+            }
+            return false
+        }
+
+        do {
+            guard try await userService.isUsernameAvailable(cleaned) else {
+                await MainActor.run { errorMessage = "@\(cleaned) is already taken." }
+                return false
+            }
+            let now = Date()
+            try await Firestore.firestore().collection("users").document(user.id).updateData([
+                "username": cleaned,
+                "usernameChangedAt": Timestamp(date: now)
+            ])
+            await MainActor.run {
+                currentNommieUser?.username = cleaned
+                currentNommieUser?.usernameChangedAt = now
+                NotificationCenter.default.post(name: .profileNeedsRefresh, object: nil)
+            }
+            return true
+        } catch {
+            await MainActor.run { errorMessage = "Couldn't change your username. Please try again." }
+            return false
+        }
+    }
+
+    func updateBio(_ bio: String) async -> Bool {
+        guard let uid = currentNommieUser?.id else { return false }
+        // 30 characters max — Swift counts grapheme clusters, so emojis are 1 each
+        let cleaned = String(bio.prefix(30)).trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            try await Firestore.firestore().collection("users").document(uid)
+                .updateData(["bio": cleaned])
+            await MainActor.run { currentNommieUser?.bio = cleaned }
+            return true
+        } catch {
+            await MainActor.run { errorMessage = "Couldn't save your profile. Please try again." }
+            return false
+        }
+    }
+
     // MARK: - Export tracking
 
     func recordExport() {

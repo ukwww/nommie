@@ -5,10 +5,37 @@ struct RecipeCardView: View {
     var compact: Bool = false
     var thumbnail: Bool = false
     var currentUserId: String? = nil
+    var likedByMe: Bool = false
+    var followingIds: Set<String> = []
+    var authorPhotoURL: String? = nil
     var onUsernameTap: (() -> Void)? = nil
+    var onLikeTap: (() -> Void)? = nil
+    var onLikerTap: ((String) -> Void)? = nil
+    var onCommentTap: (() -> Void)? = nil
 
     private var palette: CardPalette {
         CardPalettes.palette(forOwner: recipe.userId, currentUserId: currentUserId)
+    }
+
+    // The liker shown by name — prefer someone the viewer follows (or the
+    // viewer themself), fall back to whoever liked first.
+    private var pickedLiker: RecipeLiker? {
+        guard recipe.likeCount > 0 else { return nil }
+        return recipe.recentLikers.first {
+            followingIds.contains($0.userId) || $0.userId == currentUserId
+        } ?? recipe.recentLikers.first
+    }
+
+    // "@sam and 3 others liked"
+    private var likerLine: String? {
+        guard recipe.likeCount > 0 else { return nil }
+        guard let picked = pickedLiker else {
+            return recipe.likeCount == 1 ? "1 like" : "\(recipe.likeCount) likes"
+        }
+        let name = picked.userId == currentUserId ? "You" : "@\(picked.username)"
+        let others = recipe.likeCount - 1
+        if others <= 0 { return "\(name) liked this" }
+        return "\(name) and \(others) \(others == 1 ? "other" : "others") liked"
     }
 
     var body: some View {
@@ -76,33 +103,44 @@ struct RecipeCardView: View {
     var fullCard: some View {
         VStack(alignment: .leading, spacing: 0) {
 
-            // Header — replate or regular plated-by
-            if let meta = recipe.replateMeta {
-                VStack(alignment: .leading, spacing: 2) {
+            // Header — avatar + replate or regular plated-by
+            HStack(alignment: .center, spacing: 9) {
+                Button(action: { onUsernameTap?() }) {
+                    AvatarView(
+                        userId: recipe.userId,
+                        username: recipe.username,
+                        photoURL: authorPhotoURL,
+                        size: 30
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                if let meta = recipe.replateMeta {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Button(action: { onUsernameTap?() }) {
+                            Text("Replated by: @\(recipe.username)")
+                                .font(Font.custom("Caveat-Regular", size: 18))
+                                .foregroundColor(palette.accent)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        Text("↻ from @\(meta.originalUsername)")
+                            .font(Font.custom("Nunito-Regular", size: 12))
+                            .foregroundColor(palette.accent.opacity(0.7))
+                    }
+                } else {
                     Button(action: { onUsernameTap?() }) {
-                        Text("Replated by: @\(recipe.username)")
+                        Text("Plated by: @\(recipe.username)")
                             .font(Font.custom("Caveat-Regular", size: 18))
                             .foregroundColor(palette.accent)
                     }
                     .buttonStyle(PlainButtonStyle())
-                    Text("↻ from @\(meta.originalUsername)")
-                        .font(Font.custom("Nunito-Regular", size: 12))
-                        .foregroundColor(palette.accent.opacity(0.7))
                 }
-                .padding(.horizontal, 18)
-                .padding(.top, 16)
-                .padding(.bottom, 12)
-            } else {
-                Button(action: { onUsernameTap?() }) {
-                    Text("Plated by: @\(recipe.username)")
-                        .font(Font.custom("Caveat-Regular", size: 18))
-                        .foregroundColor(palette.accent)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .padding(.horizontal, 18)
-                .padding(.top, 16)
-                .padding(.bottom, 12)
+
+                Spacer(minLength: 0)
             }
+            .padding(.horizontal, 18)
+            .padding(.top, 16)
+            .padding(.bottom, 12)
 
             // Horizontal row: image left, content right
             HStack(alignment: .top, spacing: 14) {
@@ -159,8 +197,76 @@ struct RecipeCardView: View {
             }
             .padding(.horizontal, 18)
 
-            HStack {
+            // Social row: like button + liker line + save count + watermark
+            HStack(spacing: 12) {
+                Button(action: { onLikeTap?() }) {
+                    HStack(spacing: 5) {
+                        Image(systemName: likedByMe ? "heart.fill" : "heart")
+                            .font(.system(size: 16))
+                            .foregroundColor(likedByMe ? palette.accent : .nommieBrown.opacity(0.45))
+                            .scaleEffect(likedByMe ? 1.0 : 0.96)
+                            .animation(.spring(response: 0.3, dampingFraction: 0.5), value: likedByMe)
+                        if recipe.likeCount > 0 {
+                            Text("\(recipe.likeCount)")
+                                .font(Font.custom("Nunito-SemiBold", size: 13))
+                                .foregroundColor(.nommieBrown.opacity(0.6))
+                        }
+                    }
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                Button(action: { onCommentTap?() }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "bubble.left")
+                            .font(.system(size: 14))
+                            .foregroundColor(.nommieBrown.opacity(0.45))
+                        if recipe.commentCount > 0 {
+                            Text("\(recipe.commentCount)")
+                                .font(Font.custom("Nunito-SemiBold", size: 13))
+                                .foregroundColor(.nommieBrown.opacity(0.6))
+                        }
+                    }
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.2.squarepath")
+                        .font(.system(size: 13))
+                        .foregroundColor(.nommieBrown.opacity(0.45))
+                    if recipe.replateCount > 0 {
+                        Text("\(recipe.replateCount)")
+                            .font(Font.custom("Nunito-SemiBold", size: 13))
+                            .foregroundColor(.nommieBrown.opacity(0.6))
+                    }
+                }
+
+                HStack(spacing: 4) {
+                    Image(systemName: recipe.saveCount > 0 ? "bookmark.fill" : "bookmark")
+                        .font(.system(size: 13))
+                        .foregroundColor(.nommieBrown.opacity(0.45))
+                    if recipe.saveCount > 0 {
+                        Text("\(recipe.saveCount)")
+                            .font(Font.custom("Nunito-SemiBold", size: 13))
+                            .foregroundColor(.nommieBrown.opacity(0.6))
+                    }
+                }
+
+                if let line = likerLine {
+                    Button(action: {
+                        if let picked = pickedLiker, picked.userId != currentUserId {
+                            onLikerTap?(picked.username)
+                        }
+                    }) {
+                        Text(line)
+                            .font(Font.custom("Nunito-Regular", size: 12))
+                            .foregroundColor(.nommieBrown.opacity(0.5))
+                            .lineLimit(1)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+
                 Spacer()
+
                 Text("nommie")
                     .font(Font.custom("Nunito-Regular", size: 11))
                     .italic()
@@ -182,25 +288,76 @@ struct RecipeCardView: View {
     }
 }
 
-// MARK: - Stars Row (prep time)
+// MARK: - Prep Time Row (quarter-fill clock)
 struct StarsRow: View {
     let stars: Int
     let accent: Color
     let timeLabel: String
 
     var body: some View {
-        HStack(spacing: 4) {
-            HStack(spacing: 2) {
-                ForEach(1...5, id: \.self) { i in
-                    Image(systemName: i <= stars ? "star.fill" : "star")
-                        .font(.system(size: 11))
-                        .foregroundColor(i <= stars ? Color(hex: "E0A930") : .nommieBrown.opacity(0.25))
-                }
-            }
+        HStack(spacing: 5) {
+            QuarterClockIcon(quarters: min(max(stars, 1), 4), size: 14, accent: accent)
             Text(timeLabel)
                 .font(Font.custom("Nunito-Regular", size: 12))
                 .foregroundColor(.nommieBrown.opacity(0.5))
         }
+    }
+}
+
+// A single alarm-clock face that fills by quarters: 1/4 = ~15 min, 2/4 = ~30,
+// 3/4 = ~45, full = ~60. Replaces the old star rating, which read as difficulty.
+struct QuarterClockIcon: View {
+    let quarters: Int      // 1...4
+    let size: CGFloat
+    let accent: Color
+
+    var body: some View {
+        ZStack {
+            // Alarm bells
+            Group {
+                bellLine(angle: -45)
+                bellLine(angle: 45)
+            }
+
+            // Face
+            Circle()
+                .stroke(accent, lineWidth: max(1.2, size * 0.09))
+
+            // Quarter fill, from 12 o'clock
+            PieSliceShape(fraction: Double(min(max(quarters, 0), 4)) / 4.0)
+                .fill(accent.opacity(0.85))
+                .padding(size * 0.18)
+        }
+        .frame(width: size, height: size)
+    }
+
+    private func bellLine(angle: Double) -> some View {
+        Capsule()
+            .fill(accent)
+            .frame(width: max(1.4, size * 0.1), height: size * 0.24)
+            .offset(y: -size * 0.56)
+            .rotationEffect(.degrees(angle))
+    }
+}
+
+struct PieSliceShape: Shape {
+    let fraction: Double
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        guard fraction > 0 else { return path }
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let radius = min(rect.width, rect.height) / 2
+        path.move(to: center)
+        path.addArc(
+            center: center,
+            radius: radius,
+            startAngle: .degrees(-90),
+            endAngle: .degrees(-90 + 360 * min(fraction, 1.0)),
+            clockwise: false
+        )
+        path.closeSubpath()
+        return path
     }
 }
 

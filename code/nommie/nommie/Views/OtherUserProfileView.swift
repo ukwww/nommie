@@ -8,17 +8,25 @@ struct OtherUserProfileView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var recipes: [Recipe] = []
+    @State private var savedRecipes: [Recipe] = []
     @State private var followerCount: Int = 0
+    @State private var followingCount: Int = 0
     @State private var recipeCount: Int = 0
     @State private var isFollowing: Bool = false
     @State private var isFollowLoading: Bool = false
     @State private var isLoading: Bool = true
+    @State private var selectedTab: ProfileView.ProfileTab = .plates
+    @State private var savedLoaded: Bool = false
     @State private var targetUserId: String = ""
-    @State private var selectedRecipe: Recipe? = nil
+    // One sheet binding for recipe/followers/following — stacking multiple
+    // .sheet modifiers on the same view makes SwiftUI dismiss them at random.
+    @State private var activeSheet: OtherProfileSheet? = nil
     @State private var replateSource: Recipe? = nil
     @State private var showingCreation: Bool = false
     @State private var isBlocked: Bool = false
     @State private var showingBlockConfirm: Bool = false
+    @State private var profilePhotoURL: String = ""
+    @State private var profileBio: String = ""
 
     private let db = Firestore.firestore()
     private let userService = UserService()
@@ -89,13 +97,35 @@ struct OtherUserProfileView: View {
                 } else {
                     ScrollView {
                         VStack(spacing: 0) {
-                            // Stats + follow
+                            // Avatar + bio + stats + follow
                             VStack(spacing: 12) {
+                                AvatarView(
+                                    userId: targetUserId,
+                                    username: username,
+                                    photoURL: profilePhotoURL,
+                                    size: 112
+                                )
+                                .padding(.top, 8)
+
+                                if !profileBio.isEmpty {
+                                    Text(profileBio)
+                                        .font(Font.custom("Nunito-Regular", size: 14))
+                                        .foregroundColor(.nommieBrown.opacity(0.65))
+                                        .multilineTextAlignment(.center)
+                                        .padding(.horizontal, 32)
+                                }
+
                                 HStack(spacing: 28) {
                                     ProfileStat(value: "\(recipeCount)", label: "plates")
-                                    ProfileStat(value: "\(followerCount)", label: "followers")
+                                    Button(action: { activeSheet = .followers }) {
+                                        ProfileStat(value: "\(followerCount)", label: "followers")
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                    Button(action: { activeSheet = .following }) {
+                                        ProfileStat(value: "\(followingCount)", label: "following")
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
                                 }
-                                .padding(.top, 8)
 
                                 Button(action: toggleFollow) {
                                     HStack(spacing: 6) {
@@ -124,20 +154,34 @@ struct OtherUserProfileView: View {
 
                             Divider().padding(.horizontal, NommieTheme.Padding.large)
 
-                            if recipes.isEmpty {
+                            // Plates / Saved tab picker
+                            HStack(spacing: 0) {
+                                TabButton(title: "Plates", icon: "square.grid.2x2", isSelected: selectedTab == .plates) {
+                                    selectedTab = .plates
+                                }
+                                TabButton(title: "Saved", icon: "bookmark", isSelected: selectedTab == .saved) {
+                                    selectedTab = .saved
+                                    loadSavedIfNeeded()
+                                }
+                            }
+                            .padding(.horizontal, NommieTheme.Padding.large)
+                            .padding(.top, NommieTheme.Padding.medium)
+
+                            let shownRecipes = selectedTab == .plates ? recipes : savedRecipes
+                            if shownRecipes.isEmpty {
                                 VStack(spacing: 12) {
-                                    Image(systemName: "book.closed")
+                                    Image(systemName: selectedTab == .plates ? "book.closed" : "bookmark")
                                         .font(.system(size: 40))
                                         .foregroundColor(.nommieGreen.opacity(0.3))
-                                    Text("No recipes yet")
+                                    Text(selectedTab == .plates ? "No recipes yet" : "No saved recipes yet")
                                         .font(Font.custom("Nunito-Regular", size: 15))
                                         .foregroundColor(.nommieBrown.opacity(0.5))
                                 }
                                 .padding(.top, 48)
                             } else {
                                 LazyVGrid(columns: columns, spacing: 12) {
-                                    ForEach(recipes) { recipe in
-                                        Button(action: { selectedRecipe = recipe }) {
+                                    ForEach(shownRecipes) { recipe in
+                                        Button(action: { activeSheet = .recipe(recipe) }) {
                                             RecipeCardView(recipe: recipe, thumbnail: true, currentUserId: authViewModel.currentNommieUser?.id)
                                         }
                                         .buttonStyle(PlainButtonStyle())
@@ -153,15 +197,24 @@ struct OtherUserProfileView: View {
             }
         }
         .navigationBarHidden(true)
-        .sheet(item: $selectedRecipe) { recipe in
-            RecipeDetailView(
-                recipe: recipe,
-                isOwner: false,
-                onReplate: { source in
-                    replateSource = source
-                }
-            )
-            .environmentObject(authViewModel)
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .recipe(let recipe):
+                RecipeDetailView(
+                    recipe: recipe,
+                    isOwner: recipe.userId == authViewModel.currentNommieUser?.id,
+                    onReplate: { source in
+                        replateSource = source
+                    }
+                )
+                .environmentObject(authViewModel)
+            case .followers:
+                FollowListView(userId: targetUserId, type: .followers)
+                    .environmentObject(authViewModel)
+            case .following:
+                FollowListView(userId: targetUserId, type: .following)
+                    .environmentObject(authViewModel)
+            }
         }
         .fullScreenCover(item: $replateSource) { source in
             RecipeCreationView(isPresented: Binding(
@@ -179,6 +232,15 @@ struct OtherUserProfileView: View {
         .task {
             await loadProfile()
             NommieAnalytics.otherProfileViewed()
+        }
+    }
+
+    private func loadSavedIfNeeded() {
+        guard !savedLoaded, !targetUserId.isEmpty else { return }
+        savedLoaded = true
+        Task {
+            let fetched = (try? await userService.fetchSavedRecipes(userId: targetUserId)) ?? []
+            await MainActor.run { savedRecipes = fetched }
         }
     }
 
@@ -211,21 +273,26 @@ struct OtherUserProfileView: View {
                 return
             }
             let uid = user.id
-            await MainActor.run { targetUserId = uid }
+            await MainActor.run {
+                targetUserId = uid
+                profilePhotoURL = user.photoURL
+                profileBio = user.bio
+            }
 
             if let currentUserId = authViewModel.currentNommieUser?.id {
                 let blocked = (try? await userService.isBlocked(blockerId: currentUserId, blockedId: uid)) ?? false
                 await MainActor.run { isBlocked = blocked }
             }
 
-            // Parallel fetches for recipes and follower count
+            // Parallel fetches for recipes and follow counts
             async let recipesTask = db.collection("recipes")
                 .whereField("userId", isEqualTo: uid)
                 .order(by: "createdAt", descending: true)
                 .getDocuments()
             async let followerTask = userService.fetchFollowerCount(userId: uid)
+            async let followingTask = userService.fetchFollowingCount(userId: uid)
 
-            let (snap, followers) = try await (recipesTask, followerTask)
+            let (snap, followers, followingTotal) = try await (recipesTask, followerTask, followingTask)
 
             // Follow check needs current user ID — done after parallel fetch
             var following = false
@@ -238,6 +305,7 @@ struct OtherUserProfileView: View {
                 recipes = fetched
                 recipeCount = fetched.count
                 followerCount = followers
+                followingCount = followingTotal
                 isFollowing = following
                 isLoading = false
             }
@@ -271,6 +339,21 @@ struct OtherUserProfileView: View {
             } catch {
                 await MainActor.run { isFollowLoading = false }
             }
+        }
+    }
+}
+
+// The single sheet route for this screen — one binding, no modifier conflicts.
+private enum OtherProfileSheet: Identifiable {
+    case recipe(Recipe)
+    case followers
+    case following
+
+    var id: String {
+        switch self {
+        case .recipe(let recipe): return "recipe_\(recipe.id)"
+        case .followers: return "followers"
+        case .following: return "following"
         }
     }
 }

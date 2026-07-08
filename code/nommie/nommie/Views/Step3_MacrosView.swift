@@ -68,6 +68,54 @@ struct Step3_MacrosView: View {
                 }
                 .padding(.horizontal, NommieTheme.Padding.large)
 
+                // Servings stepper
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Servings")
+                            .font(NommieFont.bodySemiBold.font())
+                            .foregroundColor(.nommieBrown)
+                        Text("Used for per-serving macros")
+                            .font(Font.custom("Nunito-Regular", size: 11))
+                            .foregroundColor(.nommieBrown.opacity(0.4))
+                    }
+                    Spacer()
+                    HStack(spacing: 16) {
+                        Button(action: { if viewModel.servings > 1 { viewModel.servings -= 1 } }) {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.system(size: 26))
+                                .foregroundColor(viewModel.servings > 1 ? .nommieGreen : .nommieBrown.opacity(0.2))
+                        }
+                        .disabled(viewModel.servings <= 1)
+
+                        Text("\(viewModel.servings)")
+                            .font(NommieFont.titleSmall.font())
+                            .foregroundColor(.nommieBrown)
+                            .frame(minWidth: 24)
+
+                        Button(action: { if viewModel.servings < 20 { viewModel.servings += 1 } }) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 26))
+                                .foregroundColor(.nommieGreen)
+                        }
+                    }
+                }
+                .padding(.horizontal, NommieTheme.Padding.large)
+
+                // Tags
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Tags")
+                        .font(NommieFont.bodySemiBold.font())
+                        .foregroundColor(.nommieBrown)
+                        .padding(.horizontal, NommieTheme.Padding.large)
+                    Text("Pick what applies to your dish.")
+                        .font(Font.custom("Nunito-Regular", size: 12))
+                        .foregroundColor(.nommieBrown.opacity(0.45))
+                        .padding(.horizontal, NommieTheme.Padding.large)
+
+                    TagPickerGrid(selectedTags: $viewModel.tags)
+                        .padding(.horizontal, NommieTheme.Padding.large)
+                }
+
                 if !viewModel.errorMessage.isEmpty {
                     Text(viewModel.errorMessage)
                         .font(NommieFont.caption.font())

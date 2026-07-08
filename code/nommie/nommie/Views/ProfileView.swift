@@ -15,6 +15,7 @@ struct ProfileView: View {
     @State private var showingFollowing = false
     @State private var weeklyExpanded = false
     @State private var showingRecipeCreation = false
+    @State private var showingEditProfile = false
 
     enum ProfileTab { case plates, saved }
 
@@ -28,11 +29,51 @@ struct ProfileView: View {
                 VStack(spacing: 0) {
                     // Profile header
                     VStack(alignment: .leading, spacing: 0) {
-                        // Username row + icon buttons
-                        HStack(alignment: .top) {
-                            Text("@\(authViewModel.currentNommieUser?.username ?? "")")
-                                .font(Font.custom("Lora-Bold", size: 22))
-                                .foregroundColor(.nommieBrown)
+                        // Avatar + username + bio + edit profile
+                        HStack(alignment: .top, spacing: 14) {
+                            Button(action: { showingEditProfile = true }) {
+                                AvatarView(
+                                    userId: authViewModel.currentNommieUser?.id ?? "",
+                                    username: authViewModel.currentNommieUser?.username ?? "",
+                                    photoURL: authViewModel.currentNommieUser?.photoURL,
+                                    size: 96
+                                )
+                                .overlay {
+                                    if authViewModel.isUploadingAvatar {
+                                        ZStack {
+                                            Circle().fill(Color.black.opacity(0.35))
+                                            ProgressView()
+                                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        }
+                                    }
+                                }
+                            }
+
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text("@\(authViewModel.currentNommieUser?.username ?? "")")
+                                    .font(Font.custom("Lora-Bold", size: 22))
+                                    .foregroundColor(.nommieBrown)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
+
+                                if let bio = authViewModel.currentNommieUser?.bio, !bio.isEmpty {
+                                    Text(bio)
+                                        .font(Font.custom("Nunito-Regular", size: 13))
+                                        .foregroundColor(.nommieBrown.opacity(0.6))
+                                        .lineLimit(2)
+                                }
+
+                                Button(action: { showingEditProfile = true }) {
+                                    Text("Edit profile")
+                                        .font(Font.custom("Nunito-SemiBold", size: 12))
+                                        .foregroundColor(.nommieGreen)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 5)
+                                        .overlay(Capsule().stroke(Color.nommieGreen.opacity(0.4), lineWidth: 1.2))
+                                }
+                                .padding(.top, 3)
+                            }
+
                             Spacer()
                             HStack(spacing: 10) {
                                 ProfileIconButton(icon: "person.badge.plus") {
@@ -227,6 +268,10 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showingSearch) {
             UserSearchView().environmentObject(authViewModel)
+        }
+        .sheet(isPresented: $showingEditProfile) {
+            EditProfileView(isPresented: $showingEditProfile)
+                .environmentObject(authViewModel)
         }
         .sheet(item: $selectedRecipe) { recipe in
             let isOwner = recipe.userId == authViewModel.currentNommieUser?.id
@@ -494,6 +539,10 @@ struct GhostProfileGrid: View {
 extension Notification.Name {
     static let openRecipeCreation = Notification.Name("openRecipeCreation")
     static let profileNeedsRefresh = Notification.Name("profileNeedsRefresh")
+    // Posted only when a recipe was edited — open detail views dismiss so the
+    // parent list can show fresh data. profileNeedsRefresh is too broad for
+    // that job (saves and follows post it too).
+    static let recipeEdited = Notification.Name("recipeEdited")
 }
 
 // MARK: - Follow List View
@@ -545,23 +594,31 @@ struct FollowListView: View {
                     ScrollView {
                         LazyVStack(spacing: 0) {
                             ForEach(users) { user in
-                                Button(action: { selectedUsername = user.username }) {
+                                let isSelf = user.id == authViewModel.currentNommieUser?.id
+                                Button(action: {
+                                    if !isSelf { selectedUsername = user.username }
+                                }) {
                                     HStack(spacing: 12) {
-                                        ZStack {
-                                            Circle()
-                                                .fill(CardPalettes.paletteForUser(user.id).accent.opacity(0.15))
-                                                .frame(width: 40, height: 40)
-                                            Text(String(user.username.prefix(1)).uppercased())
-                                                .font(Font.custom("Nunito-Bold", size: 16))
-                                                .foregroundColor(CardPalettes.paletteForUser(user.id).accent)
-                                        }
+                                        AvatarView(
+                                            userId: user.id,
+                                            username: user.username,
+                                            photoURL: user.photoURL,
+                                            size: 40
+                                        )
                                         Text("@\(user.username)")
                                             .font(Font.custom("Nunito-SemiBold", size: 16))
                                             .foregroundColor(.nommieBrown)
+                                        if isSelf {
+                                            Text("you")
+                                                .font(Font.custom("Nunito-Regular", size: 12))
+                                                .foregroundColor(.nommieBrown.opacity(0.4))
+                                        }
                                         Spacer()
-                                        Image(systemName: "chevron.right")
-                                            .font(.system(size: 13))
-                                            .foregroundColor(.nommieBrown.opacity(0.3))
+                                        if !isSelf {
+                                            Image(systemName: "chevron.right")
+                                                .font(.system(size: 13))
+                                                .foregroundColor(.nommieBrown.opacity(0.3))
+                                        }
                                     }
                                     .padding(.horizontal, 20)
                                     .padding(.vertical, 12)
@@ -641,9 +698,11 @@ private struct AppleDeleteConfirmView: View {
     }
 }
 
+// Identity must be the value itself: a fresh UUID per render makes SwiftUI
+// think the item changed and dismiss whatever it's presenting.
 private struct FollowIdentifiable: Identifiable {
-    let id = UUID()
     let value: String
+    var id: String { value }
 }
 
 #Preview {

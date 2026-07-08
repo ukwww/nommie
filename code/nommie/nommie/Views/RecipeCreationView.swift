@@ -6,6 +6,11 @@ struct RecipeCreationView: View {
     @Binding var isPresented: Bool
     var replateSource: Recipe? = nil
     var editingRecipe: Recipe? = nil
+    // The 48pt bottom padding exists for the home-indicator area; when the
+    // keyboard is up it just wastes screen, so collapse it.
+    @State private var keyboardVisible = false
+
+    private var bottomBarPadding: CGFloat { keyboardVisible ? 10 : 48 }
 
     var body: some View {
         ZStack {
@@ -77,7 +82,7 @@ struct RecipeCreationView: View {
 
                 // Progress bar
                 HStack(spacing: 6) {
-                    ForEach(1...3, id: \.self) { step in
+                    ForEach(1...4, id: \.self) { step in
                         RoundedRectangle(cornerRadius: 4)
                             .fill(step <= viewModel.currentStep ? Color.nommieGreen : Color.nommieBrown.opacity(0.15))
                             .frame(height: 3)
@@ -87,12 +92,13 @@ struct RecipeCreationView: View {
                 .padding(.top, 8)
                 .padding(.bottom, NommieTheme.Padding.medium)
 
-                // Step content
+                // Step content: Photo → Write → Ingredients → Macros
                 Group {
                     switch viewModel.currentStep {
                     case 1: Step1_PhotoView(viewModel: viewModel)
                     case 2: Step2_DetailsView(viewModel: viewModel)
-                    case 3: Step3_MacrosView(viewModel: viewModel)
+                    case 3: Step3_IngredientsView(viewModel: viewModel)
+                    case 4: Step3_MacrosView(viewModel: viewModel)
                     default: EmptyView()
                     }
                 }
@@ -109,18 +115,22 @@ struct RecipeCreationView: View {
                 }
 
                 // Bottom navigation
-                if viewModel.currentStep < 3 {
+                if viewModel.currentStep < 4 {
                     HStack {
                         Spacer()
                         Button(action: {
                             if viewModel.currentStep == 1 { NommieAnalytics.stepPhotoCompleted() }
-                            if viewModel.currentStep == 2 {
+                            if viewModel.currentStep == 3 {
                                 NommieAnalytics.stepDetailsCompleted(
                                     ingredientCount: viewModel.ingredients.filter { !$0.name.isEmpty }.count
                                 )
                             }
+                            let movingToIngredients = viewModel.currentStep == 2
                             withAnimation(.easeInOut(duration: 0.25)) {
                                 viewModel.currentStep += 1
+                            }
+                            if movingToIngredients {
+                                Task { await viewModel.extractIngredientsIfNeeded() }
                             }
                         }) {
                             HStack(spacing: 6) {
@@ -140,7 +150,7 @@ struct RecipeCreationView: View {
                         .disabled(!canProceed)
                     }
                     .padding(.horizontal, NommieTheme.Padding.large)
-                    .padding(.bottom, 48)
+                    .padding(.bottom, bottomBarPadding)
                 } else {
                     Button(action: {
                         if let user = authViewModel.currentNommieUser {
@@ -160,7 +170,7 @@ struct RecipeCreationView: View {
                     }
                     .disabled(viewModel.isSaving)
                     .padding(.horizontal, NommieTheme.Padding.large)
-                    .padding(.bottom, 48)
+                    .padding(.bottom, bottomBarPadding)
                 }
             }
         }
@@ -171,6 +181,12 @@ struct RecipeCreationView: View {
                 viewModel.configureForReplate(source: source)
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            withAnimation(.easeOut(duration: 0.25)) { keyboardVisible = true }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            withAnimation(.easeOut(duration: 0.25)) { keyboardVisible = false }
+        }
         .onChange(of: viewModel.isComplete) {
             if viewModel.isComplete { isPresented = false }
         }
@@ -180,6 +196,7 @@ struct RecipeCreationView: View {
         switch viewModel.currentStep {
         case 1: return viewModel.canProceedFromStep1
         case 2: return viewModel.canProceedFromStep2
+        case 3: return viewModel.canProceedFromStep3
         default: return true
         }
     }

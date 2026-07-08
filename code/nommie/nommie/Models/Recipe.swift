@@ -6,9 +6,20 @@ struct Ingredient: Codable, Identifiable {
     var name: String
     var quantity: String
 
-    init(name: String = "", quantity: String = "") {
+    // Creation-session provenance: true while the value came from the AI draft
+    // and hasn't been touched or confirmed by the user. Never persisted.
+    var aiName: Bool = false
+    var aiQuantity: Bool = false
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, quantity
+    }
+
+    init(name: String = "", quantity: String = "", aiName: Bool = false, aiQuantity: Bool = false) {
         self.name = name
         self.quantity = quantity
+        self.aiName = aiName
+        self.aiQuantity = aiQuantity
     }
 }
 
@@ -37,6 +48,13 @@ struct ReplateMeta: Codable {
     var originalDishName: String
 }
 
+// A recent liker of a recipe — denormalized onto the recipe doc by cloud
+// triggers so the feed can render "@user and 3 others liked" without queries.
+struct RecipeLiker: Codable, Equatable {
+    var userId: String
+    var username: String
+}
+
 struct Recipe: Identifiable, Codable {
     var id: String
     var userId: String
@@ -44,6 +62,7 @@ struct Recipe: Identifiable, Codable {
     var dishName: String
     var imageURL: String
     var ingredients: [Ingredient]
+    var steps: [String]
     var notes: String
     var macros: Macros
     var tags: [String]
@@ -51,6 +70,12 @@ struct Recipe: Identifiable, Codable {
     var prepTimeStars: Int
     var replateMeta: ReplateMeta?
     var createdAt: Date
+    // Social counters — written only by cloud function triggers, never the client.
+    var likeCount: Int
+    var saveCount: Int
+    var commentCount: Int
+    var replateCount: Int
+    var recentLikers: [RecipeLiker]
 
     var isReplate: Bool { replateMeta != nil }
 
@@ -61,13 +86,19 @@ struct Recipe: Identifiable, Codable {
         dishName: String = "",
         imageURL: String = "",
         ingredients: [Ingredient] = [],
+        steps: [String] = [],
         notes: String = "",
         macros: Macros = Macros(),
         tags: [String] = [],
         servings: Int = 1,
         prepTimeStars: Int = 3,
         replateMeta: ReplateMeta? = nil,
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        likeCount: Int = 0,
+        saveCount: Int = 0,
+        commentCount: Int = 0,
+        replateCount: Int = 0,
+        recentLikers: [RecipeLiker] = []
     ) {
         self.id = id
         self.userId = userId
@@ -75,6 +106,7 @@ struct Recipe: Identifiable, Codable {
         self.dishName = dishName
         self.imageURL = imageURL
         self.ingredients = ingredients
+        self.steps = steps
         self.notes = notes
         self.macros = macros
         self.tags = tags
@@ -82,6 +114,11 @@ struct Recipe: Identifiable, Codable {
         self.prepTimeStars = prepTimeStars
         self.replateMeta = replateMeta
         self.createdAt = createdAt
+        self.likeCount = likeCount
+        self.saveCount = saveCount
+        self.commentCount = commentCount
+        self.replateCount = replateCount
+        self.recentLikers = recentLikers
     }
 
     init?(from dictionary: [String: Any]) {
@@ -100,10 +137,24 @@ struct Recipe: Identifiable, Codable {
         self.dishName = dishName
         self.imageURL = imageURL
         self.createdAt = timestamp.dateValue()
+        self.steps = dictionary["steps"] as? [String] ?? []
         self.notes = dictionary["notes"] as? String ?? ""
         self.tags = dictionary["tags"] as? [String] ?? []
         self.servings = dictionary["servings"] as? Int ?? 1
         self.prepTimeStars = dictionary["prepTimeStars"] as? Int ?? 3
+        self.likeCount = dictionary["likeCount"] as? Int ?? 0
+        self.saveCount = dictionary["saveCount"] as? Int ?? 0
+        self.commentCount = dictionary["commentCount"] as? Int ?? 0
+        self.replateCount = dictionary["replateCount"] as? Int ?? 0
+        if let likersArray = dictionary["recentLikers"] as? [[String: Any]] {
+            self.recentLikers = likersArray.compactMap { dict in
+                guard let userId = dict["userId"] as? String,
+                      let username = dict["username"] as? String else { return nil }
+                return RecipeLiker(userId: userId, username: username)
+            }
+        } else {
+            self.recentLikers = []
+        }
 
         if let macrosDict = dictionary["macros"] as? [String: Any] {
             self.macros = Macros(
@@ -151,11 +202,17 @@ struct Recipe: Identifiable, Codable {
             "username": username,
             "dishName": dishName,
             "imageURL": imageURL,
+            "steps": steps,
             "notes": notes,
             "tags": tags,
             "servings": servings,
             "prepTimeStars": prepTimeStars,
             "createdAt": Timestamp(date: createdAt),
+            "likeCount": likeCount,
+            "saveCount": saveCount,
+            "commentCount": commentCount,
+            "replateCount": replateCount,
+            "recentLikers": recentLikers.map { ["userId": $0.userId, "username": $0.username] },
             "macros": [
                 "calories": macros.calories,
                 "protein": macros.protein,

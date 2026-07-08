@@ -7,6 +7,9 @@ class HomeFeedViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String = ""
     @Published var selectedTag: String? = nil
+    @Published var likedRecipeIds: Set<String> = []
+    @Published var followingIdSet: Set<String> = []
+    @Published var authorPhotoById: [String: String] = [:]
 
     // Weekly overview (current user's plates in the last 7 days)
     @Published var platesThisWeek: Int = 0
@@ -17,6 +20,27 @@ class HomeFeedViewModel: ObservableObject {
 
     func removeRecipe(id: String) {
         recipes.removeAll { $0.id == id }
+    }
+
+    /// Optimistic like toggle — the UI flips instantly, Firestore catches up,
+    /// and cloud triggers maintain the real counters.
+    func toggleLike(recipeId: String, userId: String?, username: String?) {
+        guard let userId, let username else { return }
+        guard let idx = recipes.firstIndex(where: { $0.id == recipeId }) else { return }
+
+        if likedRecipeIds.contains(recipeId) {
+            likedRecipeIds.remove(recipeId)
+            recipes[idx].likeCount = max(0, recipes[idx].likeCount - 1)
+            recipes[idx].recentLikers.removeAll { $0.userId == userId }
+            Task { try? await userService.unlikeRecipe(userId: userId, recipeId: recipeId) }
+        } else {
+            likedRecipeIds.insert(recipeId)
+            recipes[idx].likeCount += 1
+            recipes[idx].recentLikers.append(RecipeLiker(userId: userId, username: username))
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            NommieAnalytics.likeTapped()
+            Task { try? await userService.likeRecipe(userId: userId, username: username, recipeId: recipeId) }
+        }
     }
 
     var availableTags: [String] {
@@ -71,8 +95,21 @@ class HomeFeedViewModel: ObservableObject {
             let sorted = allRecipes.sorted { $0.createdAt > $1.createdAt }
             let (weekCount, avgProtein) = Self.weeklyStats(from: sorted, userId: currentUserId)
 
+            // Which of these has the current user liked?
+            let liked = (try? await userService.fetchLikedRecipeIds(
+                userId: currentUserId,
+                recipeIds: sorted.map { $0.id }
+            )) ?? []
+
+            // Author avatars for the visible cards
+            let authorIds = Array(Set(sorted.map { $0.userId }))
+            let authorMap = (try? await userService.fetchUserMap(ids: authorIds)) ?? [:]
+
             await MainActor.run {
                 self.recipes = sorted
+                self.likedRecipeIds = liked
+                self.authorPhotoById = authorMap.mapValues { $0.photoURL }
+                self.followingIdSet = Set(followingIds)
                 self.platesThisWeek = weekCount
                 self.avgProteinThisWeek = avgProtein
                 self.isLoading = false
