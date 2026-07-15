@@ -2,6 +2,7 @@ import SwiftUI
 
 struct Step3_MacrosView: View {
     @ObservedObject var viewModel: RecipeCreationViewModel
+    var footer: AnyView = AnyView(EmptyView())
 
     var body: some View {
         ScrollView {
@@ -124,7 +125,7 @@ struct Step3_MacrosView: View {
                         .padding(.horizontal, NommieTheme.Padding.large)
                 }
 
-                Spacer(minLength: 120)
+                footer
             }
             .padding(.top, NommieTheme.Padding.small)
         }

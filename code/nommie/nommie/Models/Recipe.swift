@@ -55,6 +55,14 @@ struct RecipeLiker: Codable, Equatable {
     var username: String
 }
 
+// The most recent top-level comments, denormalized by triggers so feed cards
+// can preview them Instagram-style without extra queries.
+struct RecipePreviewComment: Codable, Hashable {
+    var userId: String
+    var username: String
+    var text: String
+}
+
 struct Recipe: Identifiable, Codable {
     var id: String
     var userId: String
@@ -76,6 +84,7 @@ struct Recipe: Identifiable, Codable {
     var commentCount: Int
     var replateCount: Int
     var recentLikers: [RecipeLiker]
+    var recentComments: [RecipePreviewComment]
 
     var isReplate: Bool { replateMeta != nil }
 
@@ -98,7 +107,8 @@ struct Recipe: Identifiable, Codable {
         saveCount: Int = 0,
         commentCount: Int = 0,
         replateCount: Int = 0,
-        recentLikers: [RecipeLiker] = []
+        recentLikers: [RecipeLiker] = [],
+        recentComments: [RecipePreviewComment] = []
     ) {
         self.id = id
         self.userId = userId
@@ -119,6 +129,7 @@ struct Recipe: Identifiable, Codable {
         self.commentCount = commentCount
         self.replateCount = replateCount
         self.recentLikers = recentLikers
+        self.recentComments = recentComments
     }
 
     init?(from dictionary: [String: Any]) {
@@ -154,6 +165,20 @@ struct Recipe: Identifiable, Codable {
             }
         } else {
             self.recentLikers = []
+        }
+
+        if let commentsArray = dictionary["recentComments"] as? [[String: Any]] {
+            self.recentComments = commentsArray.compactMap { dict in
+                guard let username = dict["username"] as? String,
+                      let text = dict["text"] as? String else { return nil }
+                return RecipePreviewComment(
+                    userId: dict["userId"] as? String ?? "",
+                    username: username,
+                    text: text
+                )
+            }
+        } else {
+            self.recentComments = []
         }
 
         if let macrosDict = dictionary["macros"] as? [String: Any] {
@@ -195,6 +220,36 @@ struct Recipe: Identifiable, Codable {
         }
     }
 
+    // Lowercased tokens the recipe search matches against: dish-name words,
+    // tags, ingredient names, and derived macro labels ("high protein",
+    // "low carb", …). Stored on the doc so search is a single arrayContains.
+    func searchTerms() -> [String] {
+        var terms = Set<String>()
+        func addWords(_ s: String) {
+            for w in s.lowercased().split(whereSeparator: { !$0.isLetter && !$0.isNumber }) where w.count >= 2 {
+                terms.insert(String(w))
+            }
+        }
+        addWords(dishName)
+        for t in tags {
+            terms.insert(t.lowercased())
+            addWords(t)
+        }
+        for ing in ingredients { addWords(ing.name) }
+
+        let per = max(1, servings)
+        let p = macros.protein / per
+        let fib = macros.fiber / per
+        let carb = macros.carbs / per
+        let cal = macros.calories / per
+        if p >= 20 { terms.insert("high protein"); terms.insert("protein") }
+        if fib >= 6 { terms.insert("high fiber"); terms.insert("fiber") }
+        if carb <= 20 { terms.insert("low carb") }
+        if cal <= 400 { terms.insert("low calorie") }
+
+        return Array(terms)
+    }
+
     func toDictionary() -> [String: Any] {
         var dict: [String: Any] = [
             "id": id,
@@ -205,6 +260,7 @@ struct Recipe: Identifiable, Codable {
             "steps": steps,
             "notes": notes,
             "tags": tags,
+            "searchTerms": searchTerms(),
             "servings": servings,
             "prepTimeStars": prepTimeStars,
             "createdAt": Timestamp(date: createdAt),

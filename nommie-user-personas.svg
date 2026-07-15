@@ -1,0 +1,134 @@
+<svg viewBox="0 0 800 672" width="800" height="672" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two hand-drawn user personas for nommie: Maya the Sharer and Daniel the Keeper">
+<title>Two cooks, one table</title>
+<desc>Two illustrated persona cards for nommie. Maya, 23, a food creator who grows the network through shareable cards. Daniel, 38, a meal-prepping dad who keeps the network alive through his personal collection and macros. Each lists their current habits, goals, frustrations, and the nommie features that fit.</desc>
+
+<defs>
+<clipPath id="mayaClip"><circle cx="88" cy="170" r="44"/></clipPath>
+<clipPath id="danClip"><circle cx="464" cy="170" r="44"/></clipPath>
+</defs>
+
+<rect x="6" y="6" width="788" height="660" rx="24" fill="#F5F0E8"/>
+
+<text x="28" y="52" font-family="Lora, Georgia, serif" font-style="italic" font-size="25" fill="#3A5C44">Two cooks, one table</text>
+<text x="28" y="74" font-family="Nunito, Helvetica, sans-serif" font-size="11.5" fill="#4A3728" fill-opacity="0.6">Very different people, both core to nommie: one grows the network, the other keeps it alive.</text>
+
+<rect x="28" y="96" width="368" height="540" rx="18" fill="#F6EAEA" stroke="#B5677A" stroke-opacity="0.5" stroke-width="1.5" stroke-dasharray="7 5"/>
+<rect x="404" y="96" width="368" height="540" rx="18" fill="#E4EEE6" stroke="#3A5C44" stroke-opacity="0.5" stroke-width="1.5" stroke-dasharray="7 5"/>
+
+<g clip-path="url(#mayaClip)">
+<circle cx="88" cy="170" r="44" fill="#EBD3D3"/>
+<g transform="translate(88,170)">
+<ellipse cx="0" cy="74" rx="54" ry="30" fill="#B5677A"/>
+<path d="M-9,26 L-9,42 Q0,48 9,42 L9,26 Z" fill="#D9A57E"/>
+<ellipse cx="0" cy="0" rx="43" ry="46" fill="#3A2A1E"/>
+<ellipse cx="0" cy="4" rx="34" ry="38" fill="#D9A57E" stroke="#4A3728" stroke-opacity="0.25" stroke-width="1.4"/>
+<ellipse cx="-33" cy="8" rx="5" ry="7" fill="#D9A57E"/>
+<ellipse cx="33" cy="8" rx="5" ry="7" fill="#D9A57E"/>
+<path d="M-38,-8 Q-34,-42 0,-44 Q34,-42 38,-8 Q20,-27 6,-18 Q0,-16 -6,-20 Q-22,-28 -38,-8 Z" fill="#3A2A1E"/>
+<path d="M-19,-8 Q-13,-11 -7,-8" stroke="#3A2A1E" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+<path d="M7,-8 Q13,-11 19,-8" stroke="#3A2A1E" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+<ellipse cx="-13" cy="0" rx="3" ry="4" fill="#2C2C2A"/>
+<ellipse cx="13" cy="0" rx="3" ry="4" fill="#2C2C2A"/>
+<circle cx="-12" cy="-1.5" r="1" fill="#FFFFFF"/>
+<circle cx="14" cy="-1.5" r="1" fill="#FFFFFF"/>
+<path d="M0,3 Q3,10 -3,11" stroke="#4A3728" stroke-opacity="0.5" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+<path d="M-10,18 Q0,26 10,18" stroke="#4A3728" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+<ellipse cx="-21" cy="13" rx="5" ry="3" fill="#B5677A" fill-opacity="0.4"/>
+<ellipse cx="21" cy="13" rx="5" ry="3" fill="#B5677A" fill-opacity="0.4"/>
+</g>
+</g>
+<circle cx="88" cy="170" r="44" fill="none" stroke="#B5677A" stroke-width="2"/>
+
+<g clip-path="url(#danClip)">
+<circle cx="464" cy="170" r="44" fill="#CFE0D2"/>
+<g transform="translate(464,170)">
+<ellipse cx="0" cy="74" rx="54" ry="30" fill="#3A5C44"/>
+<path d="M-9,26 L-9,42 Q0,48 9,42 L9,26 Z" fill="#E8C4A0"/>
+<ellipse cx="0" cy="4" rx="35" ry="38" fill="#E8C4A0" stroke="#4A3728" stroke-opacity="0.25" stroke-width="1.4"/>
+<ellipse cx="-34" cy="6" rx="5" ry="7" fill="#E8C4A0"/>
+<ellipse cx="34" cy="6" rx="5" ry="7" fill="#E8C4A0"/>
+<path d="M-35,-10 Q-32,-42 0,-40 Q32,-42 35,-10 Q22,-25 0,-23 Q-22,-25 -35,-10 Z" fill="#59534B"/>
+<path d="M-32,0 Q-33,44 0,52 Q33,44 32,0 Q30,32 0,36 Q-30,32 -32,0 Z" fill="#59534B"/>
+<path d="M-22,-10 Q-14,-14 -6,-10" stroke="#59534B" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+<path d="M6,-10 Q14,-14 22,-10" stroke="#59534B" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+<ellipse cx="-14" cy="-1" rx="2.6" ry="3.4" fill="#2C2C2A"/>
+<ellipse cx="14" cy="-1" rx="2.6" ry="3.4" fill="#2C2C2A"/>
+<path d="M0,0 Q3,9 -3,11" stroke="#4A3728" stroke-opacity="0.5" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+<path d="M-9,17 Q-4,20 0,18 Q4,20 9,17" stroke="#59534B" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+<path d="M-7,23 Q0,27 7,23" stroke="#4A3728" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+<circle cx="-14" cy="0" r="10" fill="none" stroke="#4A3728" stroke-width="1.7"/>
+<circle cx="14" cy="0" r="10" fill="none" stroke="#4A3728" stroke-width="1.7"/>
+<path d="M-4,-1 Q0,-4 4,-1" stroke="#4A3728" stroke-width="1.7" fill="none"/>
+<path d="M-24,-2 L-33,-5" stroke="#4A3728" stroke-width="1.5" stroke-linecap="round"/>
+<path d="M24,-2 L33,-5" stroke="#4A3728" stroke-width="1.5" stroke-linecap="round"/>
+</g>
+</g>
+<circle cx="464" cy="170" r="44" fill="none" stroke="#3A5C44" stroke-width="2"/>
+
+<text x="148" y="150" font-family="Lora, Georgia, serif" font-size="19" font-weight="bold" fill="#4A3728">Maya</text>
+<text x="148" y="169" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.6">23 &#183; grad student &amp; creator</text>
+<rect x="148" y="180" width="128" height="21" rx="10.5" fill="#B5677A" fill-opacity="0.16"/>
+<text x="212" y="194.5" font-family="Nunito, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#8A3F52" text-anchor="middle">The Sharer &#183; grows it</text>
+
+<text x="524" y="150" font-family="Lora, Georgia, serif" font-size="19" font-weight="bold" fill="#4A3728">Daniel</text>
+<text x="524" y="169" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.6">38 &#183; product manager &amp; dad</text>
+<rect x="524" y="180" width="126" height="21" rx="10.5" fill="#3A5C44" fill-opacity="0.16"/>
+<text x="587" y="194.5" font-family="Nunito, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#2A4331" text-anchor="middle">The Keeper &#183; keeps it</text>
+
+<text x="48" y="242" font-family="Lora, Georgia, serif" font-style="italic" font-size="13" fill="#8A3F52">&#8220;My cooking should look as good as it</text>
+<text x="48" y="260" font-family="Lora, Georgia, serif" font-style="italic" font-size="13" fill="#8A3F52">tastes. I want credit when it travels.&#8221;</text>
+
+<text x="424" y="242" font-family="Lora, Georgia, serif" font-style="italic" font-size="13" fill="#2A4331">&#8220;I just want my wins in one place, and</text>
+<text x="424" y="260" font-family="Lora, Georgia, serif" font-style="italic" font-size="13" fill="#2A4331">the macros without the guilt trip.&#8221;</text>
+
+<line x1="48" y1="280" x2="376" y2="280" stroke="#B5677A" stroke-opacity="0.25"/>
+<line x1="424" y1="280" x2="752" y2="280" stroke="#3A5C44" stroke-opacity="0.25"/>
+
+<text x="48" y="306" font-family="Nunito, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#B5677A" letter-spacing="0.4">In the kitchen now</text>
+<text x="48" y="324" font-family="Nunito, Helvetica, sans-serif" font-size="11.5" fill="#4A3728" fill-opacity="0.8">Cooks in a tiny apartment, posts plates to</text>
+<text x="48" y="340" font-family="Nunito, Helvetica, sans-serif" font-size="11.5" fill="#4A3728" fill-opacity="0.8">IG stories, screenshots recipes she loses.</text>
+
+<text x="48" y="370" font-family="Nunito, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#B5677A" letter-spacing="0.4">What she wants</text>
+<text x="48" y="388" font-family="Nunito, Helvetica, sans-serif" font-size="11.5" fill="#4A3728" fill-opacity="0.8">An audience, a signature look, and credit</text>
+<text x="48" y="404" font-family="Nunito, Helvetica, sans-serif" font-size="11.5" fill="#4A3728" fill-opacity="0.8">when other people cook her dishes.</text>
+
+<text x="48" y="434" font-family="Nunito, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#B5677A" letter-spacing="0.4">What frustrates her</text>
+<text x="48" y="452" font-family="Nunito, Helvetica, sans-serif" font-size="11.5" fill="#4A3728" fill-opacity="0.8">Reposts strip her name; her Instagram</text>
+<text x="48" y="468" font-family="Nunito, Helvetica, sans-serif" font-size="11.5" fill="#4A3728" fill-opacity="0.8">saves are an unsearchable graveyard.</text>
+
+<text x="48" y="498" font-family="Nunito, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#B5677A" letter-spacing="0.4">Why nommie fits</text>
+<rect x="48" y="508" width="86" height="22" rx="11" fill="#FFFFFF" stroke="#B5677A" stroke-opacity="0.4"/>
+<text x="91" y="523" font-family="Nunito, Helvetica, sans-serif" font-size="10.5" fill="#4A3728" text-anchor="middle">Export cards</text>
+<rect x="140" y="508" width="94" height="22" rx="11" fill="#FFFFFF" stroke="#B5677A" stroke-opacity="0.4"/>
+<text x="187" y="523" font-family="Nunito, Helvetica, sans-serif" font-size="10.5" fill="#4A3728" text-anchor="middle">Replate credit</text>
+<rect x="48" y="536" width="76" height="22" rx="11" fill="#FFFFFF" stroke="#B5677A" stroke-opacity="0.4"/>
+<text x="86" y="551" font-family="Nunito, Helvetica, sans-serif" font-size="10.5" fill="#4A3728" text-anchor="middle">Followers</text>
+<rect x="130" y="536" width="70" height="22" rx="11" fill="#FFFFFF" stroke="#B5677A" stroke-opacity="0.4"/>
+<text x="165" y="551" font-family="Nunito, Helvetica, sans-serif" font-size="10.5" fill="#4A3728" text-anchor="middle">Palettes</text>
+
+<text x="424" y="306" font-family="Nunito, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#3A5C44" letter-spacing="0.4">In the kitchen now</text>
+<text x="424" y="324" font-family="Nunito, Helvetica, sans-serif" font-size="11.5" fill="#4A3728" fill-opacity="0.8">Meal preps on Sundays, juggling Apple</text>
+<text x="424" y="340" font-family="Nunito, Helvetica, sans-serif" font-size="11.5" fill="#4A3728" fill-opacity="0.8">Notes and a joyless macro tracker.</text>
+
+<text x="424" y="370" font-family="Nunito, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#3A5C44" letter-spacing="0.4">What he wants</text>
+<text x="424" y="388" font-family="Nunito, Helvetica, sans-serif" font-size="11.5" fill="#4A3728" fill-opacity="0.8">A reliable personal cookbook and honest</text>
+<text x="424" y="404" font-family="Nunito, Helvetica, sans-serif" font-size="11.5" fill="#4A3728" fill-opacity="0.8">numbers, so he can cook the hits again.</text>
+
+<text x="424" y="434" font-family="Nunito, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#3A5C44" letter-spacing="0.4">What frustrates him</text>
+<text x="424" y="452" font-family="Nunito, Helvetica, sans-serif" font-size="11.5" fill="#4A3728" fill-opacity="0.8">Recipes scattered across notes and</text>
+<text x="424" y="468" font-family="Nunito, Helvetica, sans-serif" font-size="11.5" fill="#4A3728" fill-opacity="0.8">screenshots; macro apps feel clinical.</text>
+
+<text x="424" y="498" font-family="Nunito, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#3A5C44" letter-spacing="0.4">Why nommie fits</text>
+<rect x="424" y="508" width="102" height="22" rx="11" fill="#FFFFFF" stroke="#3A5C44" stroke-opacity="0.4"/>
+<text x="475" y="523" font-family="Nunito, Helvetica, sans-serif" font-size="10.5" fill="#4A3728" text-anchor="middle">Macro estimates</text>
+<rect x="532" y="508" width="78" height="22" rx="11" fill="#FFFFFF" stroke="#3A5C44" stroke-opacity="0.4"/>
+<text x="571" y="523" font-family="Nunito, Helvetica, sans-serif" font-size="10.5" fill="#4A3728" text-anchor="middle">Steps-first</text>
+<rect x="424" y="536" width="76" height="22" rx="11" fill="#FFFFFF" stroke="#3A5C44" stroke-opacity="0.4"/>
+<text x="462" y="551" font-family="Nunito, Helvetica, sans-serif" font-size="10.5" fill="#4A3728" text-anchor="middle">Collection</text>
+<rect x="506" y="536" width="90" height="22" rx="11" fill="#FFFFFF" stroke="#3A5C44" stroke-opacity="0.4"/>
+<text x="551" y="551" font-family="Nunito, Helvetica, sans-serif" font-size="10.5" fill="#4A3728" text-anchor="middle">No algorithm</text>
+
+<text x="400" y="600" font-family="Lora, Georgia, serif" font-style="italic" font-size="12.5" fill="#3A5C44" text-anchor="middle">One shares to grow the table. One keeps coming back to it. nommie is built for both.</text>
+
+<text x="28" y="656" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.45">User personas, July 2026 &#183; illustrative, drawn from target-user research</text>
+</svg>

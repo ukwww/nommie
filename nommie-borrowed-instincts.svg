@@ -1,0 +1,92 @@
+<svg viewBox="0 0 780 660" width="780" height="660" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Graphic showing the social behaviors nommie borrows from Instagram and Spotify, and one it deliberately rejects">
+<title>Borrowed instincts</title>
+<desc>How nommie borrows familiar social behaviors: from Instagram it takes an interaction grammar (reposts become replates, filters become card palettes, usernames link to profiles, an activity feed becomes notifications); from Spotify it takes a self-marketing shareable object, the recipe card, modeled on the fan-made Receiptify tool and Wrapped. It deliberately rejects the algorithmic feed.</desc>
+
+<rect x="10" y="12" width="760" height="636" rx="24" fill="#F5F0E8"/>
+<rect x="10" y="12" width="760" height="636" rx="24" fill="none" stroke="#3A5C44" stroke-opacity="0.4" stroke-width="1.5" stroke-dasharray="7 5"/>
+
+<text x="28" y="52" font-family="Lora, Georgia, serif" font-style="italic" font-size="25" fill="#3A5C44">Borrowed instincts</text>
+<text x="28" y="74" font-family="Nunito, Helvetica, sans-serif" font-size="11.5" fill="#4A3728" fill-opacity="0.6">People already know how to behave online. nommie borrows those instincts and moves them into the kitchen.</text>
+
+<rect x="28" y="98" width="724" height="24" rx="6" fill="#EDE8DC"/>
+<text x="40" y="114" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#3A5C44" letter-spacing="0.4">From Instagram: the grammar people already know</text>
+
+<rect x="40" y="142" width="160" height="23" rx="11.5" fill="#FFFFFF" stroke="#4A3728" stroke-opacity="0.15"/>
+<text x="120" y="158" font-family="Nunito, Helvetica, sans-serif" font-size="11.5" fill="#4A3728" text-anchor="middle">Repost</text>
+<path d="M210,153 L242,153 M236,149 L242,153 L236,157" stroke="#3A5C44" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+<text x="256" y="153" font-family="Lora, Georgia, serif" font-size="14" font-weight="bold" fill="#3A5C44">Replate</text>
+<text x="256" y="168" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.7">cook someone's dish your way; they keep the credit</text>
+
+<rect x="40" y="189" width="160" height="23" rx="11.5" fill="#FFFFFF" stroke="#4A3728" stroke-opacity="0.15"/>
+<text x="120" y="205" font-family="Nunito, Helvetica, sans-serif" font-size="11.5" fill="#4A3728" text-anchor="middle">Filters</text>
+<path d="M210,200 L242,200 M236,196 L242,200 L236,204" stroke="#3A5C44" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+<text x="256" y="200" font-family="Lora, Georgia, serif" font-size="14" font-weight="bold" fill="#3A5C44">Card palettes</text>
+<text x="256" y="215" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.7">six looks to make a card feel like yours</text>
+
+<rect x="40" y="236" width="160" height="23" rx="11.5" fill="#FFFFFF" stroke="#4A3728" stroke-opacity="0.15"/>
+<text x="120" y="252" font-family="Nunito, Helvetica, sans-serif" font-size="11.5" fill="#4A3728" text-anchor="middle">Tap a @username</text>
+<path d="M210,247 L242,247 M236,243 L242,247 L236,251" stroke="#3A5C44" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+<text x="256" y="247" font-family="Lora, Georgia, serif" font-size="14" font-weight="bold" fill="#3A5C44">Open their profile</text>
+<text x="256" y="262" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.7">every name is a door to a cook</text>
+
+<rect x="40" y="283" width="160" height="23" rx="11.5" fill="#FFFFFF" stroke="#4A3728" stroke-opacity="0.15"/>
+<text x="120" y="299" font-family="Nunito, Helvetica, sans-serif" font-size="11.5" fill="#4A3728" text-anchor="middle">The activity feed</text>
+<path d="M210,294 L242,294 M236,290 L242,294 L236,298" stroke="#3A5C44" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+<text x="256" y="294" font-family="Lora, Georgia, serif" font-size="14" font-weight="bold" fill="#3A5C44">Live notifications</text>
+<text x="256" y="309" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.7">a friend's like or replate reaches you right away</text>
+
+<rect x="28" y="330" width="724" height="24" rx="6" fill="#EDE8DC"/>
+<text x="40" y="346" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#3A5C44" letter-spacing="0.4">From Spotify: the object that markets itself</text>
+
+<rect x="40" y="375" width="160" height="23" rx="11.5" fill="#FFFFFF" stroke="#4A3728" stroke-opacity="0.15"/>
+<text x="120" y="390" font-family="Nunito, Helvetica, sans-serif" font-size="11.5" fill="#4A3728" text-anchor="middle">Receiptify</text>
+<text x="40" y="412" font-family="Nunito, Helvetica, sans-serif" font-size="9.5" fill="#4A3728" fill-opacity="0.5">a fan-made tool, not Spotify</text>
+<path d="M210,388 L242,388 M236,384 L242,388 L236,392" stroke="#3A5C44" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+<text x="256" y="388" font-family="Lora, Georgia, serif" font-size="14" font-weight="bold" fill="#3A5C44">The recipe card</text>
+<text x="256" y="403" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.7">a designed keepsake people remake</text>
+
+<rect x="40" y="427" width="160" height="23" rx="11.5" fill="#FFFFFF" stroke="#4A3728" stroke-opacity="0.15"/>
+<text x="120" y="442" font-family="Nunito, Helvetica, sans-serif" font-size="11.5" fill="#4A3728" text-anchor="middle">Wrapped</text>
+<path d="M210,440 L242,440 M236,436 L242,440 L236,444" stroke="#3A5C44" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+<text x="256" y="440" font-family="Lora, Georgia, serif" font-size="14" font-weight="bold" fill="#3A5C44">Export + QR loop</text>
+<text x="256" y="455" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.7">posted everywhere; pulls cooks home</text>
+
+<path d="M521,364 L583,364 L583,449 L577,444 L570,449 L563,444 L556,449 L549,444 L542,449 L535,444 L528,449 L521,444 Z" fill="#FFFFFF" stroke="#4A3728" stroke-opacity="0.25" stroke-width="1"/>
+<rect x="528" y="374" width="44" height="4" rx="1" fill="#4A3728" fill-opacity="0.45"/>
+<rect x="528" y="386" width="48" height="3" rx="1" fill="#4A3728" fill-opacity="0.22"/>
+<rect x="528" y="396" width="34" height="3" rx="1" fill="#4A3728" fill-opacity="0.22"/>
+<rect x="528" y="406" width="44" height="3" rx="1" fill="#4A3728" fill-opacity="0.22"/>
+<rect x="528" y="416" width="30" height="3" rx="1" fill="#4A3728" fill-opacity="0.22"/>
+<rect x="528" y="426" width="40" height="3" rx="1" fill="#4A3728" fill-opacity="0.22"/>
+
+<path d="M598,404 L624,404 M618,399 L624,404 L618,409" stroke="#3A5C44" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+
+<rect x="634" y="364" width="104" height="86" rx="10" fill="#EDE8DC" stroke="#3A5C44" stroke-opacity="0.5" stroke-width="1.3" stroke-dasharray="4 3"/>
+<rect x="642" y="372" width="38" height="38" rx="6" fill="#3A5C44" fill-opacity="0.16"/>
+<path d="M655,384 L655,398 M661,384 L661,398 M667,384 L667,398" stroke="#3A5C44" stroke-opacity="0.4" stroke-width="1.4" stroke-linecap="round"/>
+<rect x="688" y="374" width="42" height="4" rx="1" fill="#4A3728" fill-opacity="0.4"/>
+<rect x="688" y="384" width="34" height="3" rx="1" fill="#4A3728" fill-opacity="0.22"/>
+<rect x="688" y="393" width="40" height="3" rx="1" fill="#4A3728" fill-opacity="0.22"/>
+<rect x="688" y="402" width="28" height="3" rx="1" fill="#4A3728" fill-opacity="0.22"/>
+<rect x="642" y="418" width="22" height="22" rx="2" fill="#FFFFFF" stroke="#3A5C44" stroke-opacity="0.5"/>
+<rect x="646" y="422" width="4" height="4" fill="#3A5C44"/><rect x="654" y="422" width="4" height="4" fill="#3A5C44"/><rect x="646" y="430" width="4" height="4" fill="#3A5C44"/><rect x="656" y="432" width="4" height="4" fill="#3A5C44"/>
+<text x="710" y="432" font-family="Caveat, Lora, serif" font-style="italic" font-size="13" fill="#3A5C44" text-anchor="middle">plated</text>
+
+<text x="629" y="470" font-family="Lora, Georgia, serif" font-style="italic" font-size="11.5" fill="#3A5C44" text-anchor="middle">see one, want one</text>
+
+<line x1="28" y1="486" x2="752" y2="486" stroke="#3A5C44" stroke-opacity="0.15"/>
+<text x="390" y="508" font-family="Lora, Georgia, serif" font-style="italic" font-size="12.5" fill="#3A5C44" text-anchor="middle">Receiptify isn't a Spotify product. A fan made it, and Spotify still gets tagged</text>
+<text x="390" y="526" font-family="Lora, Georgia, serif" font-style="italic" font-size="12.5" fill="#3A5C44" text-anchor="middle">every time one lands on a story. nommie wants its card to travel like that.</text>
+
+<line x1="28" y1="546" x2="752" y2="546" stroke="#3A5C44" stroke-opacity="0.15"/>
+<text x="40" y="568" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#B5677A" letter-spacing="0.4">Left on the shelf</text>
+
+<rect x="40" y="580" width="160" height="23" rx="11.5" fill="#FFFFFF" stroke="#4A3728" stroke-opacity="0.15"/>
+<text x="120" y="596" font-family="Nunito, Helvetica, sans-serif" font-size="11.5" fill="#4A3728" fill-opacity="0.45" text-anchor="middle">The algorithmic feed</text>
+<line x1="52" y1="592" x2="188" y2="592" stroke="#B5677A" stroke-opacity="0.7" stroke-width="1.3"/>
+<path d="M210,591 L242,591" stroke="#4A3728" stroke-opacity="0.35" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+<text x="256" y="591" font-family="Lora, Georgia, serif" font-size="14" font-weight="bold" fill="#3A5C44">Only the people you follow</text>
+<text x="256" y="606" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.7">no ranking, no strangers, nothing to chase</text>
+
+<text x="28" y="636" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.45">The interactions feel familiar from day one. The card is the part that gets passed around.</text>
+</svg>

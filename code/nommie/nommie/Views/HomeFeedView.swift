@@ -6,6 +6,7 @@ struct HomeFeedView: View {
     @StateObject private var viewModel = HomeFeedViewModel()
     @State private var showingRecipeCreation = false
     @State private var replateSource: Recipe? = nil
+    @State private var recentlyViewed: [Recipe] = []
     // One sheet route — stacking .sheet modifiers dismisses them at random.
     @State private var activeSheet: FeedSheet? = nil
     private var currentUserId: String? { authViewModel.currentNommieUser?.id }
@@ -52,6 +53,11 @@ struct HomeFeedView: View {
                             }
                         }
                     } else {
+                        RecentlyViewedStrip(recipes: recentlyViewed) { recipe in
+                            activeSheet = .recipe(recipe)
+                        }
+                        .padding(.bottom, recentlyViewed.isEmpty ? 0 : 18)
+
                         LazyVStack(spacing: 18) {
                             ForEach(viewModel.filteredRecipes) { recipe in
                                 Button(action: { activeSheet = .recipe(recipe) }) {
@@ -61,6 +67,7 @@ struct HomeFeedView: View {
                                         currentUserId: currentUserId,
                                         likedByMe: viewModel.likedRecipeIds.contains(recipe.id),
                                         followingIds: viewModel.followingIdSet,
+                                        blockedIds: viewModel.blockedIdSet,
                                         authorPhotoURL: viewModel.authorPhotoById[recipe.userId],
                                         onUsernameTap: {
                                             if recipe.userId != currentUserId {
@@ -79,6 +86,16 @@ struct HomeFeedView: View {
                                         },
                                         onCommentTap: {
                                             activeSheet = .comments(recipe)
+                                        },
+                                        onDoubleTapLike: {
+                                            // Double-tap only ever likes, never unlikes
+                                            if !viewModel.likedRecipeIds.contains(recipe.id) {
+                                                viewModel.toggleLike(
+                                                    recipeId: recipe.id,
+                                                    userId: currentUserId,
+                                                    username: authViewModel.currentNommieUser?.username
+                                                )
+                                            }
                                         }
                                     )
                                 }
@@ -90,6 +107,9 @@ struct HomeFeedView: View {
                 }
                 .padding(.top, 80)
             }
+            .refreshable {
+                await viewModel.fetchAllRecipes(currentUserId: currentUserId)
+            }
 
             // Sticky header
             HStack(alignment: .center, spacing: 14) {
@@ -98,10 +118,14 @@ struct HomeFeedView: View {
                     .foregroundColor(.nommieGreen)
                 Spacer()
 
-                if let username = authViewModel.currentNommieUser?.username {
-                    Text("@\(username)")
-                        .font(Font.custom("Nunito-Regular", size: 14))
-                        .foregroundColor(.nommieBrown.opacity(0.55))
+                Spacer(minLength: 0)
+
+                // Search recipes
+                Button(action: { activeSheet = .recipeSearch }) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 19))
+                        .foregroundColor(.nommieBrown.opacity(0.7))
+                        .frame(width: 32, height: 32)
                 }
 
                 // Activity bell with unread badge
@@ -130,7 +154,7 @@ struct HomeFeedView: View {
             .background(Color.nommieBackground)
 
         }
-        .sheet(item: $activeSheet) { sheet in
+        .sheet(item: $activeSheet, onDismiss: { recentlyViewed = RecentlyViewed.all() }) { sheet in
             switch sheet {
             case .search:
                 UserSearchView().environmentObject(authViewModel)
@@ -152,6 +176,9 @@ struct HomeFeedView: View {
             case .comments(let recipe):
                 CommentsView(recipe: recipe)
                     .environmentObject(authViewModel)
+            case .recipeSearch:
+                RecipeSearchView()
+                    .environmentObject(authViewModel)
             }
         }
         .fullScreenCover(isPresented: $showingRecipeCreation) {
@@ -168,6 +195,12 @@ struct HomeFeedView: View {
             .environmentObject(authViewModel)
         }
         .onAppear {
+            recentlyViewed = RecentlyViewed.all()
+            Task { await viewModel.fetchAllRecipes(currentUserId: currentUserId) }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .profileNeedsRefresh)) { _ in
+            // Edits, saves, follows, and blocks all invalidate feed cards —
+            // without this, an edited recipe kept its stale copy on the feed.
             Task { await viewModel.fetchAllRecipes(currentUserId: currentUserId) }
         }
         .onReceive(NotificationCenter.default.publisher(for: .openRecipeCreation)) { _ in
@@ -184,74 +217,39 @@ struct HomeFeedView: View {
 // MARK: - Weekly Overview Banner
 struct WeeklyOverviewBanner: View {
     let plates: Int
-    let exportCount: Int
-    @Binding var expanded: Bool
+    let highlight: MacroHighlight?
 
     var body: some View {
-        VStack(spacing: 0) {
-            Button(action: { withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() } }) {
-                HStack(spacing: 0) {
-                    // Left column: plates this week
-                    HStack(alignment: .firstTextBaseline, spacing: 5) {
-                        Text("\(plates)")
-                            .font(Font.custom("Nunito-Bold", size: 20))
-                            .foregroundColor(.nommieYellow)
-                        Text(plates == 1 ? "plate this week" : "plates this week")
-                            .font(Font.custom("Nunito-SemiBold", size: 14))
-                            .foregroundColor(.white)
-                            .lineLimit(2)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                    Rectangle()
-                        .fill(Color.white.opacity(0.25))
-                        .frame(width: 1, height: 30)
-                        .padding(.horizontal, 14)
-
-                    // Right column: cards created (lifetime export count)
-                    HStack(alignment: .firstTextBaseline, spacing: 5) {
-                        Text("\(exportCount)")
-                            .font(Font.custom("Nunito-Bold", size: 20))
-                            .foregroundColor(.nommieYellow)
-                        Text(exportCount == 1 ? "card made" : "cards made")
-                            .font(Font.custom("Nunito-SemiBold", size: 14))
-                            .foregroundColor(.white)
-                            .lineLimit(2)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.8))
-                        .padding(.leading, 10)
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Text("\(plates)")
+                    .font(Font.custom("Nunito-Bold", size: 20))
+                    .foregroundColor(.nommieYellow)
+                Text(plates == 1 ? "plate this week" : "plates this week")
+                    .font(Font.custom("Nunito-SemiBold", size: 14))
+                    .foregroundColor(.white)
             }
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+            .padding(.bottom, highlight == nil ? 16 : 12)
 
-            if expanded {
-                VStack(alignment: .leading, spacing: 8) {
-                    Divider().background(Color.white.opacity(0.2))
-                    if plates == 0 {
-                        Text("You haven't plated anything this week yet. Tap + to start your streak.")
-                            .font(Font.custom("Nunito-Regular", size: 13))
-                            .foregroundColor(.white.opacity(0.85))
-                    } else {
-                        Text("Your plates, exported")
-                            .font(Font.custom("Nunito-SemiBold", size: 13))
-                            .foregroundColor(.white.opacity(0.7))
-                        Text("\(plates == 1 ? "1 plate" : "\(plates) plates") logged this week, \(exportCount == 1 ? "1 card" : "\(exportCount) cards") created all time. Keep sharing.")
-                            .font(Font.custom("Nunito-Regular", size: 14))
-                            .foregroundColor(.white)
-                    }
+            if let highlight {
+                Divider().background(Color.white.opacity(0.2))
+                    .padding(.horizontal, 20)
+                HStack(alignment: .top, spacing: 8) {
+                    Text(highlight.emoji)
+                        .font(.system(size: 15))
+                    Text(highlight.text)
+                        .font(Font.custom("Nunito-Regular", size: 13.5))
+                        .foregroundColor(.white)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 20)
+                .padding(.top, 10)
                 .padding(.bottom, 16)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.nommieGreen)
         .clipShape(RoundedRectangle(cornerRadius: 18))
     }
@@ -384,6 +382,7 @@ struct FeedEmptyState: View {
 // The feed's single sheet route — one binding, no modifier conflicts.
 private enum FeedSheet: Identifiable {
     case search
+    case recipeSearch
     case recipe(Recipe)
     case profile(String)
     case notifications
@@ -392,6 +391,7 @@ private enum FeedSheet: Identifiable {
     var id: String {
         switch self {
         case .search: return "search"
+        case .recipeSearch: return "recipeSearch"
         case .recipe(let recipe): return "recipe_\(recipe.id)"
         case .profile(let username): return "profile_\(username)"
         case .notifications: return "notifications"

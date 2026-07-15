@@ -79,42 +79,64 @@ struct RecipeDetailView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
 
-                        // Replate attribution header — usernames open profiles
-                        if let meta = recipe.replateMeta {
-                            VStack(alignment: .leading, spacing: 2) {
+                        // Header — attribution on the left, replate/save counts top-right
+                        HStack(alignment: .top, spacing: 10) {
+                            if let meta = recipe.replateMeta {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Button(action: { openProfile(recipe.username) }) {
+                                        Text("Replated by: @\(recipe.username)")
+                                            .font(Font.custom("Caveat-Regular", size: 19))
+                                            .foregroundColor(cardAccent)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                    Button(action: {
+                                        Task {
+                                            if let original = try? await userService.fetchRecipe(id: meta.originalRecipeId) {
+                                                await MainActor.run { detailSheet = .original(original) }
+                                            }
+                                        }
+                                    }) {
+                                        Text("↻ from @\(meta.originalUsername) · \"\(meta.originalDishName)\"")
+                                            .font(Font.custom("Nunito-Regular", size: 12))
+                                            .foregroundColor(.nommieBrown.opacity(0.5))
+                                            .underline()
+                                    }
+                                }
+                            } else {
                                 Button(action: { openProfile(recipe.username) }) {
-                                    Text("Replated by: @\(recipe.username)")
+                                    Text("Plated by: @\(recipe.username)")
                                         .font(Font.custom("Caveat-Regular", size: 19))
                                         .foregroundColor(cardAccent)
                                 }
                                 .buttonStyle(PlainButtonStyle())
-                                Button(action: {
-                                    Task {
-                                        if let original = try? await userService.fetchRecipe(id: meta.originalRecipeId) {
-                                            await MainActor.run { detailSheet = .original(original) }
-                                        }
+                            }
+
+                            Spacer(minLength: 0)
+
+                            HStack(spacing: 10) {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "arrow.2.squarepath")
+                                        .font(.system(size: 13))
+                                    if recipe.replateCount > 0 {
+                                        Text("\(recipe.replateCount)")
+                                            .font(Font.custom("Nunito-SemiBold", size: 13))
                                     }
-                                }) {
-                                    Text("↻ from @\(meta.originalUsername) · \"\(meta.originalDishName)\"")
-                                        .font(Font.custom("Nunito-Regular", size: 12))
-                                        .foregroundColor(.nommieBrown.opacity(0.5))
-                                        .underline()
+                                }
+                                HStack(spacing: 3) {
+                                    Image(systemName: recipe.saveCount > 0 ? "bookmark.fill" : "bookmark")
+                                        .font(.system(size: 13))
+                                    if recipe.saveCount > 0 {
+                                        Text("\(recipe.saveCount)")
+                                            .font(Font.custom("Nunito-SemiBold", size: 13))
+                                    }
                                 }
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.top, 16)
-                            .padding(.bottom, 10)
-                        } else {
-                            Button(action: { openProfile(recipe.username) }) {
-                                Text("Plated by: @\(recipe.username)")
-                                    .font(Font.custom("Caveat-Regular", size: 19))
-                                    .foregroundColor(cardAccent)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .padding(.horizontal, 16)
-                            .padding(.top, 16)
-                            .padding(.bottom, 10)
+                            .foregroundColor(.nommieBrown.opacity(0.5))
+                            .padding(.top, 4)
                         }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
+                        .padding(.bottom, 10)
 
                         // Image — square crop with rounded corners
                         GeometryReader { geo in
@@ -240,15 +262,21 @@ struct RecipeDetailView: View {
                             .padding(.bottom, 14)
                         }
 
-                        // Notes
+                        // Notes — @mentions render green and open profiles
                         if !recipe.notes.isEmpty {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Notes")
                                     .font(Font.custom("Lora-SemiBold", size: 15))
                                     .foregroundColor(.nommieBrown)
-                                Text(recipe.notes)
-                                    .font(Font.custom("Nunito-Regular", size: 14))
-                                    .foregroundColor(.nommieBrown.opacity(0.65))
+                                Text(attributedNotes(recipe.notes))
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .environment(\.openURL, OpenURLAction { url in
+                                        if url.scheme == "nommie", url.host == "user" {
+                                            let handle = url.pathComponents.count > 1 ? url.pathComponents[1] : ""
+                                            openProfile(handle)
+                                        }
+                                        return .handled
+                                    })
                             }
                             .padding(.horizontal, 16)
                             .padding(.bottom, 14)
@@ -274,58 +302,36 @@ struct RecipeDetailView: View {
                             .padding(.bottom, 14)
                         }
 
-                        // Social row: like + comments (interactive), replates + saves (counts)
-                        HStack(spacing: 16) {
+                        // Social row: emphasized like + comments
+                        HStack(spacing: 20) {
                             Button(action: toggleLike) {
-                                HStack(spacing: 5) {
+                                HStack(spacing: 6) {
                                     Image(systemName: isLiked ? "heart.fill" : "heart")
-                                        .font(.system(size: 17))
-                                        .foregroundColor(isLiked ? cardAccent : .nommieBrown.opacity(0.5))
+                                        .font(.system(size: 22))
+                                        .foregroundColor(isLiked ? cardAccent : .nommieBrown.opacity(0.65))
                                         .animation(.spring(response: 0.3, dampingFraction: 0.5), value: isLiked)
                                     if likeCount > 0 {
                                         Text("\(likeCount)")
-                                            .font(Font.custom("Nunito-SemiBold", size: 14))
-                                            .foregroundColor(.nommieBrown.opacity(0.65))
+                                            .font(Font.custom("Nunito-Bold", size: 15))
+                                            .foregroundColor(.nommieBrown.opacity(0.75))
                                     }
                                 }
                             }
                             .buttonStyle(PlainButtonStyle())
 
                             Button(action: { detailSheet = .comments }) {
-                                HStack(spacing: 5) {
+                                HStack(spacing: 6) {
                                     Image(systemName: "bubble.left")
-                                        .font(.system(size: 16))
-                                        .foregroundColor(.nommieBrown.opacity(0.5))
+                                        .font(.system(size: 20))
+                                        .foregroundColor(.nommieBrown.opacity(0.65))
                                     if recipe.commentCount > 0 {
                                         Text("\(recipe.commentCount)")
-                                            .font(Font.custom("Nunito-SemiBold", size: 14))
-                                            .foregroundColor(.nommieBrown.opacity(0.65))
+                                            .font(Font.custom("Nunito-Bold", size: 15))
+                                            .foregroundColor(.nommieBrown.opacity(0.75))
                                     }
                                 }
                             }
                             .buttonStyle(PlainButtonStyle())
-
-                            HStack(spacing: 5) {
-                                Image(systemName: "arrow.2.squarepath")
-                                    .font(.system(size: 15))
-                                    .foregroundColor(.nommieBrown.opacity(0.5))
-                                if recipe.replateCount > 0 {
-                                    Text("\(recipe.replateCount)")
-                                        .font(Font.custom("Nunito-SemiBold", size: 14))
-                                        .foregroundColor(.nommieBrown.opacity(0.65))
-                                }
-                            }
-
-                            HStack(spacing: 5) {
-                                Image(systemName: recipe.saveCount > 0 ? "bookmark.fill" : "bookmark")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.nommieBrown.opacity(0.5))
-                                if recipe.saveCount > 0 {
-                                    Text("\(recipe.saveCount)")
-                                        .font(Font.custom("Nunito-SemiBold", size: 14))
-                                        .foregroundColor(.nommieBrown.opacity(0.65))
-                                }
-                            }
 
                             Spacer()
 
@@ -485,6 +491,7 @@ struct RecipeDetailView: View {
         }
         .task {
             likeCount = recipe.likeCount
+            RecentlyViewed.record(recipe)
             if !isOwner, let uid = authViewModel.currentNommieUser?.id {
                 isSaved = (try? await userService.isSaved(userId: uid, recipeId: recipe.id)) ?? false
                 isLiked = (try? await userService.isLiked(userId: uid, recipeId: recipe.id)) ?? false
@@ -508,8 +515,41 @@ struct RecipeDetailView: View {
     }
 
     private func openProfile(_ username: String) {
-        guard username != authViewModel.currentNommieUser?.username else { return }
+        guard !username.isEmpty, username != authViewModel.currentNommieUser?.username else { return }
         detailCover = .profile(username)
+    }
+
+    // Renders notes with @username mentions as tappable green links.
+    private func attributedNotes(_ notes: String) -> AttributedString {
+        let baseFont = Font.custom("Nunito-Regular", size: 14)
+        let baseColor = Color.nommieBrown.opacity(0.65)
+
+        var out = AttributedString()
+        let ns = notes as NSString
+        let regex = try? NSRegularExpression(pattern: "@([A-Za-z0-9_]+)")
+        let matches = regex?.matches(in: notes, range: NSRange(location: 0, length: ns.length)) ?? []
+
+        var cursor = 0
+        for m in matches {
+            if m.range.location > cursor {
+                var seg = AttributedString(ns.substring(with: NSRange(location: cursor, length: m.range.location - cursor)))
+                seg.font = baseFont; seg.foregroundColor = baseColor
+                out += seg
+            }
+            let handle = ns.substring(with: m.range(at: 1))
+            var mention = AttributedString(ns.substring(with: m.range))
+            mention.font = Font.custom("Nunito-Bold", size: 14)
+            mention.foregroundColor = .nommieGreen
+            mention.link = URL(string: "nommie://user/\(handle)")
+            out += mention
+            cursor = m.range.location + m.range.length
+        }
+        if cursor < ns.length {
+            var seg = AttributedString(ns.substring(from: cursor))
+            seg.font = baseFont; seg.foregroundColor = baseColor
+            out += seg
+        }
+        return out
     }
 
     private func submitReport(reason: String) {

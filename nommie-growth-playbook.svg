@@ -1,0 +1,80 @@
+<svg viewBox="0 0 780 606" width="780" height="606" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Quadrant map of viral logging apps by growth speed and staying power">
+<title>How log-your-life apps grow</title>
+<desc>Five apps plotted by growth speed and staying power: Letterboxd and Strava compound slowly with strong moats, Beli sits in the middle, Locket and BeReal grew fast and faded. A dashed marker shows the corner nommie aims for, with three borrowed lessons below.</desc>
+
+<rect x="10" y="12" width="760" height="582" rx="24" fill="#F5F0E8"/>
+<rect x="10" y="12" width="760" height="582" rx="24" fill="none" stroke="#3A5C44" stroke-opacity="0.4" stroke-width="1.5" stroke-dasharray="7 5"/>
+
+<text x="40" y="56" font-family="Lora, Georgia, serif" font-style="italic" font-size="25" fill="#3A5C44">How log-your-life apps grow</text>
+<text x="40" y="78" font-family="Nunito, Helvetica, sans-serif" font-size="11.5" fill="#4A3728" fill-opacity="0.6">Five viral playbooks mapped by growth speed and staying power, and the corner nommie aims for</text>
+
+<text x="40" y="103" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.55">Moat:</text>
+<circle cx="82" cy="99" r="5" fill="#3A5C44"/>
+<text x="93" y="103" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#3A5C44">strong</text>
+<circle cx="148" cy="99" r="5" fill="#9C7A2E"/>
+<text x="159" y="103" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#9C7A2E">some</text>
+<circle cx="208" cy="99" r="5" fill="#B5677A"/>
+<text x="219" y="103" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#B5677A">copyable</text>
+<circle cx="292" cy="99" r="6" fill="none" stroke="#3A5C44" stroke-dasharray="3 2.5" stroke-width="1.5"/>
+<text x="304" y="103" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#3A5C44">nommie's aim</text>
+
+<rect x="80" y="128" width="640" height="310" fill="none" stroke="#4A3728" stroke-opacity="0.15"/>
+<line x1="400" y1="128" x2="400" y2="438" stroke="#4A3728" stroke-opacity="0.12" stroke-dasharray="4 4"/>
+<line x1="80" y1="283" x2="720" y2="283" stroke="#4A3728" stroke-opacity="0.12" stroke-dasharray="4 4"/>
+
+<text x="92" y="148" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.4" font-style="italic">cult classics</text>
+<text x="708" y="148" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.4" font-style="italic" text-anchor="end">the promised land</text>
+<text x="92" y="428" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.4" font-style="italic">quiet fades</text>
+<text x="708" y="428" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.4" font-style="italic" text-anchor="end">flash in the pan</text>
+
+<text x="74" y="150" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.5" text-anchor="end">compounds</text>
+<text x="74" y="436" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.5" text-anchor="end">fades</text>
+<text x="34" y="283" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.5" text-anchor="middle" transform="rotate(-90 34 283)">staying power</text>
+<text x="80" y="458" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.5">slow burn</text>
+<text x="400" y="458" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.5" text-anchor="middle">growth speed</text>
+<text x="720" y="458" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.5" text-anchor="end">overnight viral</text>
+
+<circle cx="208" cy="196" r="7" fill="#3A5C44"/>
+<text x="222" y="192" font-family="Lora, Georgia, serif" font-size="13" font-weight="bold" fill="#4A3728">Letterboxd</text>
+<text x="222" y="206" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.7">a decade to identity practice</text>
+
+<circle cx="368" cy="165" r="7" fill="#3A5C44"/>
+<text x="382" y="161" font-family="Lora, Georgia, serif" font-size="13" font-weight="bold" fill="#4A3728">Strava</text>
+<text x="382" y="175" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.7">&#8220;not on Strava? didn't happen&#8221;</text>
+
+<circle cx="528" cy="190" r="14" fill="none" stroke="#3A5C44" stroke-width="1.8" stroke-dasharray="4 3"/>
+<circle cx="528" cy="190" r="5.5" fill="#3A5C44"/>
+<text x="550" y="186" font-family="Lora, Georgia, serif" font-style="italic" font-size="15" fill="#3A5C44">nommie</text>
+<text x="550" y="202" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.7">grow by card, stay for the table</text>
+
+<circle cx="477" cy="252" r="7" fill="#9C7A2E"/>
+<text x="491" y="248" font-family="Lora, Georgia, serif" font-size="13" font-weight="bold" fill="#4A3728">Beli</text>
+<text x="491" y="266" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.7">city-by-city friend FOMO</text>
+
+<circle cx="592" cy="330" r="7" fill="#B5677A"/>
+<text x="578" y="326" font-family="Lora, Georgia, serif" font-size="13" font-weight="bold" fill="#4A3728" text-anchor="end">Locket</text>
+<text x="578" y="344" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.7" text-anchor="end">tight clusters, novelty churn</text>
+
+<circle cx="669" cy="392" r="7" fill="#B5677A"/>
+<text x="655" y="388" font-family="Lora, Georgia, serif" font-size="13" font-weight="bold" fill="#4A3728" text-anchor="end">BeReal</text>
+<text x="655" y="406" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.7" text-anchor="end">20M DAU spike, then -48%</text>
+
+<text x="40" y="492" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.55">What nommie borrows:</text>
+
+<rect x="40" y="502" width="218" height="56" rx="12" fill="#EDE8DC"/>
+<text x="54" y="524" font-family="Nunito, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3A5C44">From Beli</text>
+<text x="54" y="540" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.75">eating is social; sharing</text>
+<text x="54" y="552" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.75">what you cook is bonding</text>
+
+<rect x="282" y="502" width="218" height="56" rx="12" fill="#EDE8DC"/>
+<text x="296" y="524" font-family="Nunito, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3A5C44">From Strava + Letterboxd</text>
+<text x="296" y="540" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.75">logged history becomes</text>
+<text x="296" y="552" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.75">identity and switching cost</text>
+
+<rect x="524" y="502" width="218" height="56" rx="12" fill="#EDE8DC"/>
+<text x="538" y="524" font-family="Nunito, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#3A5C44">From BeReal</text>
+<text x="538" y="540" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.75">simplicity drove fast growth;</text>
+<text x="538" y="552" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.75">but thin apps fade, so add depth</text>
+
+<text x="40" y="582" font-family="Nunito, Helvetica, sans-serif" font-size="11" fill="#4A3728" fill-opacity="0.45">Growth research, July 2026 &#183; positions approximate, user figures are estimates</text>
+</svg>

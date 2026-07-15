@@ -10,6 +10,7 @@ struct CommentsView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var comments: [Comment] = []
+    @State private var authorPhotos: [String: String] = [:]
     @State private var isLoading = true
     @State private var draft: String = ""
     @State private var isPosting = false
@@ -188,6 +189,7 @@ struct CommentsView: View {
         CommentRow(
             comment: comment,
             indented: indented,
+            photoURL: authorPhotos[comment.userId],
             likedByMe: comment.likedBy.contains(authViewModel.currentNommieUser?.id ?? ""),
             canDelete: canDelete(comment),
             onLike: { toggleLike(comment) },
@@ -200,6 +202,11 @@ struct CommentsView: View {
             onProfileTap: {
                 if comment.username != authViewModel.currentNommieUser?.username {
                     profileUsername = CommentProfileUsername(value: comment.username)
+                }
+            },
+            onMentionTap: { handle in
+                if !handle.isEmpty, handle != authViewModel.currentNommieUser?.username {
+                    profileUsername = CommentProfileUsername(value: handle)
                 }
             }
         )
@@ -223,6 +230,19 @@ struct CommentsView: View {
             comments = fetched
             isLoading = false
         }
+        await hydratePhotos(for: fetched.map { $0.userId })
+    }
+
+    // Resolve commenter profile photos so their avatars show real pictures.
+    private func hydratePhotos(for userIds: [String]) async {
+        let missing = Set(userIds).subtracting(authorPhotos.keys)
+        guard !missing.isEmpty else { return }
+        let userMap = (try? await userService.fetchUserMap(ids: Array(missing))) ?? [:]
+        await MainActor.run {
+            for id in missing {
+                authorPhotos[id] = userMap[id]?.photoURL ?? ""
+            }
+        }
     }
 
     private func post() {
@@ -238,6 +258,7 @@ struct CommentsView: View {
                     text: text, parentCommentId: parentId
                 )
                 await MainActor.run {
+                    authorPhotos[user.id] = user.photoURL
                     comments.append(posted)
                     draft = ""
                     replyingTo = nil
@@ -285,6 +306,7 @@ struct CommentsView: View {
 private struct CommentRow: View {
     let comment: Comment
     let indented: Bool
+    let photoURL: String?
     let likedByMe: Bool
     let canDelete: Bool
     let onLike: () -> Void
@@ -292,11 +314,12 @@ private struct CommentRow: View {
     let onDelete: () -> Void
     let onReport: () -> Void
     let onProfileTap: () -> Void
+    let onMentionTap: (String) -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Button(action: onProfileTap) {
-                AvatarView(userId: comment.userId, username: comment.username, size: indented ? 26 : 34)
+                AvatarView(userId: comment.userId, username: comment.username, photoURL: photoURL, size: indented ? 26 : 34)
             }
             .buttonStyle(PlainButtonStyle())
 
@@ -313,10 +336,15 @@ private struct CommentRow: View {
                         .foregroundColor(.nommieBrown.opacity(0.4))
                 }
 
-                Text(comment.text)
-                    .font(Font.custom("Nunito-Regular", size: 14))
-                    .foregroundColor(.nommieBrown.opacity(0.85))
+                Text(mentionAttributed(comment.text))
                     .fixedSize(horizontal: false, vertical: true)
+                    .environment(\.openURL, OpenURLAction { url in
+                        if url.scheme == "nommie", url.host == "user" {
+                            let handle = url.pathComponents.count > 1 ? url.pathComponents[1] : ""
+                            onMentionTap(handle)
+                        }
+                        return .handled
+                    })
 
                 HStack(spacing: 12) {
                     Button(action: onReply) {
@@ -341,42 +369,75 @@ private struct CommentRow: View {
 
             Spacer()
 
-            // Like + overflow, trailing
-            VStack(alignment: .center, spacing: 2) {
-                HStack(spacing: 8) {
-                    Menu {
-                        if canDelete {
-                            Button(role: .destructive, action: onDelete) {
-                                Label("Delete", systemImage: "trash")
-                            }
+            // Trailing: overflow menu, then a heart with its count directly beneath.
+            HStack(alignment: .top, spacing: 8) {
+                Menu {
+                    if canDelete {
+                        Button(role: .destructive, action: onDelete) {
+                            Label("Delete", systemImage: "trash")
                         }
-                        Button(action: onReport) {
-                            Label("Report", systemImage: "flag")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 12))
-                            .foregroundColor(.nommieBrown.opacity(0.3))
-                            .frame(width: 22, height: 22)
                     }
+                    Button(action: onReport) {
+                        Label("Report", systemImage: "flag")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 12))
+                        .foregroundColor(.nommieBrown.opacity(0.3))
+                        .frame(width: 22, height: 22)
+                }
 
+                VStack(spacing: 2) {
                     Button(action: onLike) {
                         Image(systemName: likedByMe ? "heart.fill" : "heart")
                             .font(.system(size: 14))
                             .foregroundColor(likedByMe ? .nommieBlush : .nommieBrown.opacity(0.35))
                     }
                     .buttonStyle(PlainButtonStyle())
-                }
-                if comment.likeCount > 0 {
-                    Text("\(comment.likeCount)")
-                        .font(Font.custom("Nunito-SemiBold", size: 11))
-                        .foregroundColor(.nommieBrown.opacity(0.45))
+                    if comment.likeCount > 0 {
+                        Text("\(comment.likeCount)")
+                            .font(Font.custom("Nunito-SemiBold", size: 11))
+                            .foregroundColor(.nommieBrown.opacity(0.45))
+                    }
                 }
             }
         }
         .padding(.leading, indented ? 52 : 18)
         .padding(.trailing, 18)
         .padding(.vertical, 9)
+    }
+
+    // Renders comment text with @username mentions as tappable green links.
+    private func mentionAttributed(_ text: String) -> AttributedString {
+        let baseFont = Font.custom("Nunito-Regular", size: 14)
+        let baseColor = Color.nommieBrown.opacity(0.85)
+
+        var out = AttributedString()
+        let ns = text as NSString
+        let regex = try? NSRegularExpression(pattern: "@([A-Za-z0-9_]+)")
+        let matches = regex?.matches(in: text, range: NSRange(location: 0, length: ns.length)) ?? []
+
+        var cursor = 0
+        for m in matches {
+            if m.range.location > cursor {
+                var seg = AttributedString(ns.substring(with: NSRange(location: cursor, length: m.range.location - cursor)))
+                seg.font = baseFont; seg.foregroundColor = baseColor
+                out += seg
+            }
+            let handle = ns.substring(with: m.range(at: 1))
+            var mention = AttributedString(ns.substring(with: m.range))
+            mention.font = Font.custom("Nunito-Bold", size: 14)
+            mention.foregroundColor = .nommieGreen
+            mention.link = URL(string: "nommie://user/\(handle)")
+            out += mention
+            cursor = m.range.location + m.range.length
+        }
+        if cursor < ns.length {
+            var seg = AttributedString(ns.substring(from: cursor))
+            seg.font = baseFont; seg.foregroundColor = baseColor
+            out += seg
+        }
+        return out
     }
 }
 

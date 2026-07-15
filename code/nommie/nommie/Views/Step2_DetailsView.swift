@@ -4,6 +4,7 @@ import SwiftUI
 // how you cooked it. Ingredients are drafted by AI from these steps in Step 3.
 struct Step2_DetailsView: View {
     @ObservedObject var viewModel: RecipeCreationViewModel
+    var footer: AnyView = AnyView(EmptyView())
     @FocusState private var focusedField: String?
 
     var body: some View {
@@ -128,7 +129,7 @@ struct Step2_DetailsView: View {
                             .focused($focusedField, equals: "notes")
                     }
 
-                    Spacer(minLength: 120)
+                    footer
                 }
                 .padding(.top, NommieTheme.Padding.medium)
             }

@@ -300,6 +300,48 @@ class UserService {
         return Recipe(from: data)
     }
 
+    func fetchMostRecentRecipe(userId: String) async throws -> Recipe? {
+        let snap = try await db.collection("recipes")
+            .whereField("userId", isEqualTo: userId)
+            .order(by: "createdAt", descending: true)
+            .limit(to: 1)
+            .getDocuments()
+        return snap.documents.first.flatMap { Recipe(from: $0.data()) }
+    }
+
+    // MARK: - Recipe search
+
+    // The @username whose account new users auto-follow, and whose handle
+    // seeds an empty search. Set to your own username; empty disables both.
+    static let founderUsername = "ubinnoms"
+
+    /// Searches all recipes by denormalized searchTerms (tags, dish words,
+    /// ingredients, macro labels). Newest first, blocked authors removed.
+    func searchRecipes(term: String, blockedIds: Set<String> = []) async throws -> [Recipe] {
+        let q = term.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { return [] }
+
+        let snap = try await db.collection("recipes")
+            .whereField("searchTerms", arrayContains: q)
+            .limit(to: 40)
+            .getDocuments()
+
+        return snap.documents
+            .compactMap { Recipe(from: $0.data()) }
+            .filter { !blockedIds.contains($0.userId) }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    /// New accounts follow the founder so their feed isn't empty. No-op if
+    /// the founder username is unset or can't be resolved.
+    func autoFollowFounder(newUserId: String) async {
+        let handle = Self.founderUsername
+        guard !handle.isEmpty else { return }
+        guard let founder = try? await fetchUserProfileByUsername(handle),
+              founder.id != newUserId else { return }
+        try? await followUser(followerId: newUserId, followingId: founder.id)
+    }
+
     func fetchSavedRecipes(userId: String) async throws -> [Recipe] {
         // Skip order(by:) to avoid composite-index requirement; sort in memory.
         let savedSnapshot = try await db.collection("saved")

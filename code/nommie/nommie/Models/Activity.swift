@@ -71,7 +71,11 @@ struct Comment: Identifiable, Codable {
 
 struct AppNotification: Identifiable, Codable {
     enum Kind: String {
-        case follow, like, save, comment, replate, reply
+        case follow, like, save, comment, replate, reply, mention
+        case friendLike = "friend_like"
+        case friendComment = "friend_comment"
+        case newRecipe = "new_recipe"
+        case commentLike = "comment_like"
     }
 
     var id: String
@@ -82,6 +86,8 @@ struct AppNotification: Identifiable, Codable {
     var recipeId: String?
     var dishName: String?
     var preview: String?
+    // For friend-activity: the username of the recipe's owner
+    var targetUsername: String?
     var read: Bool
     var createdAt: Date
 
@@ -102,6 +108,7 @@ struct AppNotification: Identifiable, Codable {
         self.recipeId = dictionary["recipeId"] as? String
         self.dishName = dictionary["dishName"] as? String
         self.preview = dictionary["preview"] as? String
+        self.targetUsername = dictionary["targetUsername"] as? String
         self.read = dictionary["read"] as? Bool ?? false
         self.createdAt = (dictionary["createdAt"] as? Timestamp)?.dateValue() ?? Date()
     }
@@ -125,17 +132,38 @@ struct AppNotification: Identifiable, Codable {
                 return "\(name) replied to your comment: \u{201C}\(preview)\u{201D}"
             }
             return "\(name) replied to your comment"
+        case .friendLike:
+            return "\(name) liked @\(targetUsername ?? "someone")'s \(dish)"
+        case .friendComment:
+            if let preview, !preview.isEmpty {
+                return "\(name) on @\(targetUsername ?? "someone")'s \(dish): \u{201C}\(preview)\u{201D}"
+            }
+            return "\(name) commented on @\(targetUsername ?? "someone")'s \(dish)"
+        case .newRecipe:
+            return "\(name) plated something new: \(dish)"
+        case .mention:
+            return "\(name) mentioned you in \(dish)"
+        case .commentLike:
+            if let preview, !preview.isEmpty {
+                return "\(name) liked your comment: \u{201C}\(preview)\u{201D}"
+            }
+            return "\(name) liked your comment"
         }
     }
 
     var iconName: String {
         switch kind {
-        case .follow:  return "person.badge.plus"
-        case .like:    return "heart.fill"
-        case .save:    return "bookmark.fill"
-        case .comment: return "bubble.left.fill"
-        case .replate: return "arrow.2.squarepath"
-        case .reply:   return "arrowshape.turn.up.left.fill"
+        case .follow:        return "person.badge.plus"
+        case .like:          return "heart.fill"
+        case .save:          return "bookmark.fill"
+        case .comment:       return "bubble.left.fill"
+        case .replate:       return "arrow.2.squarepath"
+        case .reply:         return "arrowshape.turn.up.left.fill"
+        case .friendLike:    return "heart"
+        case .friendComment: return "bubble.left"
+        case .newRecipe:     return "frying.pan"
+        case .mention:       return "at"
+        case .commentLike:   return "heart.fill"
         }
     }
 }

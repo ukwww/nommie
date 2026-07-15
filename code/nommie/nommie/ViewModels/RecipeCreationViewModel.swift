@@ -223,9 +223,20 @@ class RecipeCreationViewModel: ObservableObject {
         }
 
         let filteredIngredients = ingredients.filter { !$0.name.isEmpty }
+        var newlyCreated: Recipe? = nil
+        var isFirstPlate = false
 
         do {
             if isEditMode, let recipeId = editingRecipeId {
+                // Rebuild a Recipe so searchTerms stay in sync with the edit.
+                let edited = Recipe(
+                    id: recipeId,
+                    dishName: dishName,
+                    ingredients: filteredIngredients,
+                    macros: macros,
+                    tags: tags,
+                    servings: max(1, servings)
+                )
                 let updatedData: [String: Any] = [
                     "dishName": dishName,
                     "ingredients": filteredIngredients.map { ["name": $0.name, "quantity": $0.quantity] },
@@ -240,6 +251,7 @@ class RecipeCreationViewModel: ObservableObject {
                         "sugar": macros.sugar
                     ],
                     "tags": tags,
+                    "searchTerms": edited.searchTerms(),
                     "servings": max(1, servings),
                     "prepTimeStars": prepTimeStars
                 ]
@@ -282,6 +294,13 @@ class RecipeCreationViewModel: ObservableObject {
                     usedAIEstimate: usedAIEstimate,
                     isReplate: replateMeta != nil
                 )
+
+                // Is this their very first plate? Drives the celebration flow.
+                let mine = try? await db.collection("recipes")
+                    .whereField("userId", isEqualTo: currentUser.id)
+                    .getDocuments()
+                isFirstPlate = (mine?.documents.count ?? 0) <= 1
+                newlyCreated = recipe
             }
 
             await MainActor.run {
@@ -290,6 +309,9 @@ class RecipeCreationViewModel: ObservableObject {
                 NotificationCenter.default.post(name: .profileNeedsRefresh, object: nil)
                 if isEditMode {
                     NotificationCenter.default.post(name: .recipeEdited, object: nil)
+                }
+                if let newlyCreated, isFirstPlate {
+                    NotificationCenter.default.post(name: .firstPlateCreated, object: newlyCreated)
                 }
             }
         } catch {

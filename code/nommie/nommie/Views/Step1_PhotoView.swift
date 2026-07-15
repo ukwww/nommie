@@ -2,6 +2,7 @@ import SwiftUI
 
 struct Step1_PhotoView: View {
     @ObservedObject var viewModel: RecipeCreationViewModel
+    var footer: AnyView = AnyView(EmptyView())
     @State private var showingPicker = false
 
     var body: some View {
@@ -67,7 +68,11 @@ struct Step1_PhotoView: View {
                 }
                 .padding(.horizontal, NommieTheme.Padding.large)
             }
+
+            Spacer(minLength: 20)
+            footer
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .fullScreenCover(isPresented: $showingPicker) {
             ImageCropPickerView(selectedImage: $viewModel.selectedImage) {
                 showingPicker = false

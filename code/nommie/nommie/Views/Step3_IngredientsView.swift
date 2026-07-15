@@ -6,6 +6,7 @@ import SwiftUI
 // required to proceed — ingredients should feel intentional, never skipped.
 struct Step3_IngredientsView: View {
     @ObservedObject var viewModel: RecipeCreationViewModel
+    var footer: AnyView = AnyView(EmptyView())
     @FocusState private var focusedField: String?
     @State private var showingRedraftConfirm = false
 
@@ -121,7 +122,7 @@ struct Step3_IngredientsView: View {
                     }
                 }
 
-                Spacer(minLength: 120)
+                footer
             }
             .padding(.top, NommieTheme.Padding.small)
         }

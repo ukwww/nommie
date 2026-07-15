@@ -8,14 +8,11 @@ struct ProfileView: View {
     @State private var showingSearch = false
     @State private var selectedRecipe: Recipe? = nil
     @State private var selectedTab: ProfileTab = .plates
-    @State private var showingDeleteConfirm = false
-    @State private var showingAppleDeleteSheet = false
-    @State private var deletePassword = ""
     @State private var showingFollowers = false
     @State private var showingFollowing = false
-    @State private var weeklyExpanded = false
-    @State private var showingRecipeCreation = false
     @State private var showingEditProfile = false
+    @State private var showingSettings = false
+    @State private var showingFilters = false
 
     enum ProfileTab { case plates, saved }
 
@@ -29,6 +26,25 @@ struct ProfileView: View {
                 VStack(spacing: 0) {
                     // Profile header
                     VStack(alignment: .leading, spacing: 0) {
+                        // Top action row: nommie wordmark (left), then search,
+                        // QR, settings on the right.
+                        HStack(spacing: 10) {
+                            Text("nommie ")
+                                .font(Font.custom("Caveat-Bold", size: 32))
+                                .foregroundColor(.nommieGreen)
+                            Spacer()
+                            ProfileIconButton(icon: "person.badge.plus") {
+                                showingSearch = true
+                            }
+                            ProfileIconButton(icon: "square.and.arrow.up") {
+                                showingQRCode = true
+                            }
+                            ProfileIconButton(icon: "gearshape") {
+                                showingSettings = true
+                            }
+                        }
+                        .padding(.bottom, 16)
+
                         // Avatar + username + bio + edit profile
                         HStack(alignment: .top, spacing: 14) {
                             Button(action: { showingEditProfile = true }) {
@@ -75,14 +91,6 @@ struct ProfileView: View {
                             }
 
                             Spacer()
-                            HStack(spacing: 10) {
-                                ProfileIconButton(icon: "person.badge.plus") {
-                                    showingSearch = true
-                                }
-                                ProfileIconButton(icon: "qrcode") {
-                                    showingQRCode = true
-                                }
-                            }
                         }
                         .padding(.bottom, 16)
 
@@ -126,46 +134,10 @@ struct ProfileView: View {
                         }
                         .padding(.bottom, 16)
 
-                        // New plate CTA
-                        Button(action: { showingRecipeCreation = true }) {
-                            HStack(spacing: 14) {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color.nommieGreen.opacity(0.12))
-                                        .frame(width: 44, height: 44)
-                                    Image(systemName: "plus")
-                                        .font(.system(size: 20, weight: .semibold))
-                                        .foregroundColor(.nommieGreen)
-                                }
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Log a new plate")
-                                        .font(Font.custom("Nunito-Bold", size: 15))
-                                        .foregroundColor(.nommieBrown)
-                                    Text("Create your next recipe card")
-                                        .font(Font.custom("Nunito-Regular", size: 12))
-                                        .foregroundColor(.nommieBrown.opacity(0.45))
-                                }
-                                Spacer()
-                                Image(systemName: "arrow.right")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.nommieGreen.opacity(0.5))
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 13)
-                            .background(Color.white.opacity(0.75))
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(Color.nommieGreen.opacity(0.35), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
-                            )
-                        }
-                        .padding(.bottom, 14)
-
                         // Weekly recap banner
                         WeeklyOverviewBanner(
                             plates: viewModel.platesThisWeek,
-                            exportCount: authViewModel.currentNommieUser?.exportCount ?? 0,
-                            expanded: $weeklyExpanded
+                            highlight: viewModel.recentMacroInsight
                         )
                     }
                     .padding(.horizontal, NommieTheme.Padding.large)
@@ -190,23 +162,50 @@ struct ProfileView: View {
                     .padding(.top, NommieTheme.Padding.medium)
                     .padding(.bottom, 4)
 
-                    // Tag filter pills
-                    if !viewModel.availableTags.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 10) {
-                                FilterPill(label: "All", isSelected: viewModel.selectedTag == nil) {
-                                    viewModel.selectedTag = nil
-                                }
-                                ForEach(viewModel.availableTags, id: \.self) { tag in
-                                    FilterPill(label: tag, isSelected: viewModel.selectedTag == tag) {
-                                        viewModel.selectedTag = (viewModel.selectedTag == tag) ? nil : tag
+                    // Filters + Sort
+                    HStack(spacing: 10) {
+                        Button(action: { showingFilters = true }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "line.3.horizontal.decrease.circle")
+                                    .font(.system(size: 14))
+                                Text(viewModel.selectedTags.isEmpty ? "Filters" : "Filters (\(viewModel.selectedTags.count))")
+                                    .font(Font.custom("Nunito-SemiBold", size: 13))
+                            }
+                            .foregroundColor(viewModel.selectedTags.isEmpty ? .nommieBrown.opacity(0.6) : .nommieGreen)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .overlay(Capsule().stroke(
+                                viewModel.selectedTags.isEmpty ? Color.nommieBrown.opacity(0.2) : Color.nommieGreen.opacity(0.5),
+                                lineWidth: 1.3))
+                        }
+
+                        Menu {
+                            ForEach(ProfileViewModel.SortOption.allCases) { option in
+                                Button(action: { viewModel.sortOption = option }) {
+                                    if viewModel.sortOption == option {
+                                        Label(option.rawValue, systemImage: "checkmark")
+                                    } else {
+                                        Text(option.rawValue)
                                     }
                                 }
                             }
-                            .padding(.horizontal, 16)
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "arrow.up.arrow.down")
+                                    .font(.system(size: 13))
+                                Text(viewModel.sortOption.rawValue)
+                                    .font(Font.custom("Nunito-SemiBold", size: 13))
+                            }
+                            .foregroundColor(.nommieBrown.opacity(0.6))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .overlay(Capsule().stroke(Color.nommieBrown.opacity(0.2), lineWidth: 1.3))
                         }
-                        .padding(.vertical, 10)
+
+                        Spacer()
                     }
+                    .padding(.horizontal, NommieTheme.Padding.large)
+                    .padding(.vertical, 12)
 
                     // Grid content
                     if selectedTab == .plates {
@@ -215,54 +214,7 @@ struct ProfileView: View {
                         savedGrid
                     }
 
-                    // Sign out + delete account at the bottom
-                    VStack(spacing: 14) {
-                        Button(action: { authViewModel.signOut() }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "rectangle.portrait.and.arrow.right")
-                                    .font(.system(size: 13))
-                                Text("Sign Out")
-                                    .font(NommieFont.bodySemiBold.font())
-                            }
-                            .foregroundColor(.nommieGreen)
-                            .padding(.horizontal, 28)
-                            .padding(.vertical, 11)
-                            .overlay(Capsule().stroke(Color.nommieGreen.opacity(0.4), lineWidth: 1.5))
-                        }
-
-                        Button(action: {
-                            if let url = URL(string: "mailto:ubinkw@gmail.com?subject=Nommie%20Support") {
-                                UIApplication.shared.open(url)
-                            }
-                        }) {
-                            Text("Contact Support")
-                                .font(NommieFont.caption.font())
-                                .foregroundColor(.nommieBrown.opacity(0.4))
-                        }
-
-                        Button(action: {
-                            if authViewModel.isAppleUser {
-                                showingAppleDeleteSheet = true
-                            } else {
-                                deletePassword = ""
-                                showingDeleteConfirm = true
-                            }
-                        }) {
-                            Text("Delete Account")
-                                .font(NommieFont.caption.font())
-                                .foregroundColor(.nommieBrown.opacity(0.3))
-                        }
-
-                        #if DEBUG
-                        Button(action: { UserDefaults.standard.removeObject(forKey: "hasSeenOnboarding") }) {
-                            Text("Replay Onboarding")
-                                .font(NommieFont.caption.font())
-                                .foregroundColor(.nommieBrown.opacity(0.2))
-                        }
-                        #endif
-                    }
-                    .padding(.top, 40)
-                    .padding(.bottom, 100)
+                    Color.clear.frame(height: 100)
                 }
             }
         }
@@ -273,6 +225,17 @@ struct ProfileView: View {
             EditProfileView(isPresented: $showingEditProfile)
                 .environmentObject(authViewModel)
         }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView(isPresented: $showingSettings)
+                .environmentObject(authViewModel)
+        }
+        .sheet(isPresented: $showingFilters) {
+            FilterSheet(
+                availableTags: viewModel.availableTags,
+                selectedTags: $viewModel.selectedTags,
+                isPresented: $showingFilters
+            )
+        }
         .sheet(item: $selectedRecipe) { recipe in
             let isOwner = recipe.userId == authViewModel.currentNommieUser?.id
             RecipeDetailView(recipe: recipe, isOwner: isOwner, onDelete: {
@@ -281,33 +244,7 @@ struct ProfileView: View {
             .environmentObject(authViewModel)
         }
         .sheet(isPresented: $showingQRCode) {
-            QRCodeView(
-                username: authViewModel.currentNommieUser?.username ?? "",
-                isPresented: $showingQRCode
-            )
-        }
-        .fullScreenCover(isPresented: $showingRecipeCreation, onDismiss: {
-            if let uid = authViewModel.currentNommieUser?.id {
-                Task { await viewModel.fetchRecipes(for: uid) }
-            }
-        }) {
-            RecipeCreationView(isPresented: $showingRecipeCreation)
-                .environmentObject(authViewModel)
-        }
-        .alert("Delete Account", isPresented: $showingDeleteConfirm) {
-            SecureField("Password", text: $deletePassword)
-            Button("Cancel", role: .cancel) { deletePassword = "" }
-            Button("Delete", role: .destructive) {
-                Task {
-                    _ = await authViewModel.deleteAccount(password: deletePassword)
-                    deletePassword = ""
-                }
-            }
-        } message: {
-            Text("This permanently deletes your account, recipes, and photos. This can't be undone.")
-        }
-        .sheet(isPresented: $showingAppleDeleteSheet) {
-            AppleDeleteConfirmView(isPresented: $showingAppleDeleteSheet)
+            ShareProfileView(isPresented: $showingQRCode)
                 .environmentObject(authViewModel)
         }
         .sheet(isPresented: $showingFollowers) {
@@ -459,6 +396,246 @@ struct ProfileIconButton: View {
     }
 }
 
+// MARK: - Filter Sheet
+
+struct FilterSheet: View {
+    let availableTags: [String]
+    @Binding var selectedTags: Set<String>
+    @Binding var isPresented: Bool
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Color.nommieBackground.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                Text("Filter by tag")
+                    .font(Font.custom("Lora-SemiBold", size: 20))
+                    .foregroundColor(.nommieBrown)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 22)
+                    .padding(.bottom, 18)
+
+                if availableTags.isEmpty {
+                    Spacer()
+                    Text("No tags to filter by yet.")
+                        .font(Font.custom("Nunito-Regular", size: 14))
+                        .foregroundColor(.nommieBrown.opacity(0.5))
+                    Spacer()
+                } else {
+                    ScrollView {
+                        FlowTagLayout(tags: availableTags) { tag in
+                            let isOn = selectedTags.contains(tag)
+                            Button(action: {
+                                if isOn { selectedTags.remove(tag) } else { selectedTags.insert(tag) }
+                            }) {
+                                HStack(spacing: 5) {
+                                    if isOn {
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 10, weight: .bold))
+                                    }
+                                    Text(tag)
+                                        .font(Font.custom("Nunito-SemiBold", size: 13))
+                                }
+                                .foregroundColor(isOn ? .white : .nommieBrown.opacity(0.7))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(Capsule().fill(isOn ? Color.nommieGreen : Color.white.opacity(0.6)))
+                                .overlay(Capsule().stroke(isOn ? Color.clear : Color.nommieBrown.opacity(0.2), lineWidth: 1))
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                    }
+                }
+
+                // Actions
+                HStack(spacing: 12) {
+                    Button(action: { selectedTags.removeAll() }) {
+                        Text("Clear")
+                            .font(Font.custom("Nunito-SemiBold", size: 16))
+                            .foregroundColor(.nommieGreen)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 52)
+                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.nommieGreen.opacity(0.4), lineWidth: 1.5))
+                    }
+                    .opacity(selectedTags.isEmpty ? 0.4 : 1)
+                    .disabled(selectedTags.isEmpty)
+
+                    Button(action: { isPresented = false }) {
+                        Text("Done")
+                            .font(Font.custom("Nunito-SemiBold", size: 16))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 52)
+                            .background(RoundedRectangle(cornerRadius: 14).fill(Color.nommieGreen))
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 28)
+                .padding(.top, 8)
+            }
+
+            Button(action: { isPresented = false }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.nommieBrown.opacity(0.5))
+                    .frame(width: 30, height: 30)
+                    .background(Circle().strokeBorder(Color.nommieBrown.opacity(0.2), lineWidth: 1.5))
+            }
+            .padding(.top, 20)
+            .padding(.trailing, 20)
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.hidden)
+    }
+}
+
+// MARK: - Settings
+
+struct SettingsView: View {
+    @EnvironmentObject var authViewModel: AuthViewModel
+    @Binding var isPresented: Bool
+
+    @State private var showingDeleteConfirm = false
+    @State private var showingAppleDeleteSheet = false
+    @State private var deletePassword = ""
+
+    private let privacyURL = "https://getnommie.app/privacy.html"
+    private let supportMailto = "mailto:ubinkw@gmail.com?subject=Nommie%20Support"
+
+    private var appVersion: String {
+        let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        return "nommie v\(v) (\(b))"
+    }
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Color.nommieBackground.ignoresSafeArea()
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Settings")
+                    .font(Font.custom("Lora-SemiBold", size: 20))
+                    .foregroundColor(.nommieBrown)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 22)
+                    .padding(.bottom, 20)
+
+                VStack(spacing: 0) {
+                    settingsRow(icon: "envelope", label: "Contact support") {
+                        if let url = URL(string: supportMailto) { UIApplication.shared.open(url) }
+                    }
+                    rowDivider
+                    settingsRow(icon: "doc.text", label: "Privacy policy & terms") {
+                        if let url = URL(string: privacyURL) { UIApplication.shared.open(url) }
+                    }
+                    rowDivider
+                    settingsRow(icon: "rectangle.portrait.and.arrow.right", label: "Sign out") {
+                        authViewModel.signOut()
+                    }
+                    rowDivider
+                    settingsRow(icon: "trash", label: "Delete account", tint: .nommieBlush) {
+                        if authViewModel.isAppleUser {
+                            showingAppleDeleteSheet = true
+                        } else {
+                            deletePassword = ""
+                            showingDeleteConfirm = true
+                        }
+                    }
+                }
+                .background(RoundedRectangle(cornerRadius: 16).fill(Color.white.opacity(0.7)))
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.nommieBrown.opacity(0.1), lineWidth: 1))
+                .padding(.horizontal, 20)
+
+                Spacer()
+
+                Text(appVersion)
+                    .font(Font.custom("Nunito-Regular", size: 12))
+                    .foregroundColor(.nommieBrown.opacity(0.35))
+                    .frame(maxWidth: .infinity)
+                    .padding(.bottom, 8)
+
+                #if DEBUG
+                VStack(spacing: 10) {
+                    Button(action: { UserDefaults.standard.removeObject(forKey: "hasSeenOnboarding") }) {
+                        Text("Replay onboarding")
+                            .font(Font.custom("Nunito-Regular", size: 12))
+                            .foregroundColor(.nommieBrown.opacity(0.25))
+                            .frame(maxWidth: .infinity)
+                    }
+                    Button(action: {
+                        isPresented = false
+                        NotificationCenter.default.post(name: .replayFirstPlateFlow, object: nil)
+                    }) {
+                        Text("Replay first-plate flow")
+                            .font(Font.custom("Nunito-Regular", size: 12))
+                            .foregroundColor(.nommieBrown.opacity(0.25))
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .padding(.bottom, 24)
+                #else
+                Color.clear.frame(height: 24)
+                #endif
+            }
+
+            Button(action: { isPresented = false }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.nommieBrown.opacity(0.5))
+                    .frame(width: 30, height: 30)
+                    .background(Circle().strokeBorder(Color.nommieBrown.opacity(0.2), lineWidth: 1.5))
+            }
+            .padding(.top, 20)
+            .padding(.trailing, 20)
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.hidden)
+        .alert("Delete Account", isPresented: $showingDeleteConfirm) {
+            SecureField("Password", text: $deletePassword)
+            Button("Cancel", role: .cancel) { deletePassword = "" }
+            Button("Delete", role: .destructive) {
+                Task {
+                    _ = await authViewModel.deleteAccount(password: deletePassword)
+                    deletePassword = ""
+                }
+            }
+        } message: {
+            Text("This permanently deletes your account, recipes, and photos. This can't be undone.")
+        }
+        .sheet(isPresented: $showingAppleDeleteSheet) {
+            AppleDeleteConfirmView(isPresented: $showingAppleDeleteSheet)
+                .environmentObject(authViewModel)
+        }
+    }
+
+    private var rowDivider: some View {
+        Divider().padding(.leading, 52)
+    }
+
+    private func settingsRow(icon: String, label: String, tint: Color = .nommieBrown, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                Image(systemName: icon)
+                    .font(.system(size: 16))
+                    .foregroundColor(tint.opacity(0.7))
+                    .frame(width: 22)
+                Text(label)
+                    .font(Font.custom("Nunito-SemiBold", size: 15))
+                    .foregroundColor(tint == .nommieBlush ? .nommieBlush : .nommieBrown)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.nommieBrown.opacity(0.25))
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 15)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
 // MARK: - Profile Tab Button
 struct TabButton: View {
     let title: String
@@ -543,6 +720,10 @@ extension Notification.Name {
     // parent list can show fresh data. profileNeedsRefresh is too broad for
     // that job (saves and follows post it too).
     static let recipeEdited = Notification.Name("recipeEdited")
+    // Posted with the new Recipe when a user saves their first-ever plate.
+    static let firstPlateCreated = Notification.Name("firstPlateCreated")
+    // Debug: replay the first-plate flow using the user's most recent plate.
+    static let replayFirstPlateFlow = Notification.Name("replayFirstPlateFlow")
 }
 
 // MARK: - Follow List View

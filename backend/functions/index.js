@@ -21,7 +21,8 @@ const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
 
 // Writes an in-app activity notification and (best effort) sends the push.
 // All notification docs are created server-side only — clients just read.
-async function notifyUser(recipientId, { type, actorId, actorUsername, recipeId = null, dishName = null, preview = null, title, body }) {
+// sendPush: false keeps it bell-only (used for friend-activity fan-outs).
+async function notifyUser(recipientId, { type, actorId, actorUsername, recipeId = null, dishName = null, preview = null, targetUsername = null, sendPush = true, title = null, body = null }) {
   const db = admin.firestore();
 
   await db.collection("notifications").add({
@@ -32,9 +33,12 @@ async function notifyUser(recipientId, { type, actorId, actorUsername, recipeId 
     recipeId,
     dishName,
     preview,
+    targetUsername,
     read: false,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   }).catch(() => {});
+
+  if (!sendPush || !title) return;
 
   const recipientDoc = await db.collection("users").doc(recipientId).get();
   const fcmToken = recipientDoc.data()?.fcmToken;
@@ -46,6 +50,75 @@ async function notifyUser(recipientId, { type, actorId, actorUsername, recipeId 
     data: { type, ...(recipeId ? { recipeId } : {}), actorId },
     apns: { payload: { aps: { sound: "default" } } },
   }).catch(() => {});
+}
+
+// Delivers a notification to everyone who follows the actor, skipping the
+// actor and anyone in excludeIds (e.g. the recipe owner, who already got a
+// direct notification).
+async function fanOutToFollowers(actorId, excludeIds, payload) {
+  const followersSnap = await admin.firestore().collection("follows")
+    .where("followingId", "==", actorId)
+    .get();
+
+  const skip = new Set([actorId, ...excludeIds.filter(Boolean)]);
+  for (const doc of followersSnap.docs) {
+    const followerId = doc.data().followerId;
+    if (!followerId || skip.has(followerId)) continue;
+    await notifyUser(followerId, payload);
+  }
+}
+
+// Recomputes the two most recent top-level comments denormalized onto the
+// recipe doc, so the feed can preview them without extra queries.
+async function refreshRecentComments(recipeId) {
+  const db = admin.firestore();
+  const snap = await db.collection("comments")
+    .where("recipeId", "==", recipeId)
+    .get();
+
+  const topLevel = snap.docs
+    .map((d) => d.data())
+    .filter((c) => !c.parentCommentId)
+    .sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
+
+  const recent = topLevel.slice(0, 2).map((c) => ({
+    userId: c.userId ?? "",
+    username: c.username ?? "",
+    text: String(c.text ?? "").slice(0, 120),
+  }));
+
+  await db.collection("recipes").doc(recipeId).update({ recentComments: recent }).catch(() => {});
+}
+
+// Parses @username mentions out of text and notifies each real, distinct
+// user — skipping the author and any handles in excludeUsernames.
+async function notifyMentions({ text, authorId, authorUsername, recipeId, dishName, excludeUsernames = [] }) {
+  const handles = [...new Set(
+    (String(text || "").match(/@([a-zA-Z0-9_]+)/g) || []).map((h) => h.slice(1).toLowerCase())
+  )];
+  if (handles.length === 0) return;
+
+  const exclude = new Set(
+    [authorUsername, ...excludeUsernames].filter(Boolean).map((u) => u.toLowerCase())
+  );
+  const db = admin.firestore();
+
+  for (const handle of handles) {
+    if (exclude.has(handle)) continue;
+    const snap = await db.collection("users").where("username", "==", handle).limit(1).get();
+    const doc = snap.docs[0];
+    if (!doc || doc.id === authorId) continue;
+
+    await notifyUser(doc.id, {
+      type: "mention",
+      actorId: authorId,
+      actorUsername: authorUsername,
+      recipeId,
+      dishName,
+      title: "You were mentioned",
+      body: `@${authorUsername ?? "Someone"} mentioned you in ${dishName}.`,
+    });
+  }
 }
 
 // Notify a user when someone follows them
@@ -122,6 +195,17 @@ exports.onLikeCreated = onDocumentCreated("likes/{docId}", async (event) => {
     title: "New like",
     body: `@${username ?? "Someone"} liked your ${recipe.dishName}.`,
   });
+
+  // Friend activity: the liker's followers hear about it (bell only, no push)
+  await fanOutToFollowers(userId, [recipe.userId], {
+    type: "friend_like",
+    actorId: userId,
+    actorUsername: username,
+    recipeId,
+    dishName: recipe.dishName,
+    targetUsername: recipe.username,
+    sendPush: false,
+  });
 });
 
 exports.onLikeDeleted = onDocumentDeleted("likes/{docId}", async (event) => {
@@ -175,34 +259,78 @@ exports.onSaveDeleted = onDocumentDeleted("saved/{docId}", async (event) => {
   }).catch(() => {});
 });
 
-// Notify the original author when someone replates their recipe,
-// and keep the original's replateCount current.
+// Every new recipe: notify the author's followers (with push). For replates,
+// also credit the original author and keep their replateCount current.
 exports.onReplateCreated = onDocumentCreated("recipes/{recipeId}", async (event) => {
   const data = event.data.data();
-  if (!data.replateMeta) return;
+  const authorId = data.userId;
+  const authorUsername = data.username;
 
-  const replaterUsername = data.username;
-  const originalRecipeId = data.replateMeta.originalRecipeId;
-  const originalUserId  = data.replateMeta.originalUserId;
-  const originalDishName = data.replateMeta.originalDishName;
+  if (data.replateMeta) {
+    const originalRecipeId = data.replateMeta.originalRecipeId;
+    const originalUserId  = data.replateMeta.originalUserId;
+    const originalDishName = data.replateMeta.originalDishName;
 
-  if (originalRecipeId) {
-    await admin.firestore().collection("recipes").doc(originalRecipeId).update({
-      replateCount: admin.firestore.FieldValue.increment(1),
-    }).catch(() => {});
+    if (originalRecipeId) {
+      await admin.firestore().collection("recipes").doc(originalRecipeId).update({
+        replateCount: admin.firestore.FieldValue.increment(1),
+      }).catch(() => {});
+    }
+
+    // Don't notify when someone replates their own recipe
+    if (authorId !== originalUserId) {
+      await notifyUser(originalUserId, {
+        type: "replate",
+        actorId: authorId,
+        actorUsername: authorUsername,
+        recipeId: event.params.recipeId,
+        dishName: originalDishName,
+        title: "Your recipe was replated",
+        body: `@${authorUsername} cooked your ${originalDishName}.`,
+      });
+    }
   }
 
-  // Don't notify when someone replates their own recipe
-  if (data.userId === originalUserId) return;
-
-  await notifyUser(originalUserId, {
-    type: "replate",
-    actorId: data.userId,
-    actorUsername: replaterUsername,
+  // New-plate fan-out to the author's followers, push included. The original
+  // author of a replate is excluded — they just got the replate notification.
+  await fanOutToFollowers(authorId, [data.replateMeta?.originalUserId], {
+    type: "new_recipe",
+    actorId: authorId,
+    actorUsername: authorUsername,
     recipeId: event.params.recipeId,
-    dishName: originalDishName,
-    title: "Your recipe was replated",
-    body: `@${replaterUsername} cooked your ${originalDishName}.`,
+    dishName: data.dishName,
+    sendPush: true,
+    title: "New plate",
+    body: `@${authorUsername} plated ${data.dishName}.`,
+  });
+
+  // Notify anyone @mentioned in the notes.
+  await notifyMentions({
+    text: data.notes,
+    authorId,
+    authorUsername,
+    recipeId: event.params.recipeId,
+    dishName: data.dishName,
+  });
+});
+
+// When a recipe's notes are edited, notify anyone newly @mentioned.
+exports.onRecipeUpdated = onDocumentUpdated("recipes/{recipeId}", async (event) => {
+  const before = event.data.before.data();
+  const after = event.data.after.data();
+  if (!before || !after) return;
+  if ((before.notes || "") === (after.notes || "")) return;
+
+  const alreadyMentioned = ((before.notes || "").match(/@([a-zA-Z0-9_]+)/g) || [])
+    .map((h) => h.slice(1));
+
+  await notifyMentions({
+    text: after.notes,
+    authorId: after.userId,
+    authorUsername: after.username,
+    recipeId: event.params.recipeId,
+    dishName: after.dishName,
+    excludeUsernames: alreadyMentioned,
   });
 });
 
@@ -244,6 +372,7 @@ exports.onCommentCreated = onDocumentCreated("comments/{commentId}", async (even
   await db.collection("recipes").doc(recipeId).update({
     commentCount: admin.firestore.FieldValue.increment(1),
   }).catch(() => {});
+  await refreshRecentComments(recipeId);
 
   if (!recipeSnap.exists) return;
   const recipe = recipeSnap.data();
@@ -270,17 +399,47 @@ exports.onCommentCreated = onDocumentCreated("comments/{commentId}", async (even
 
   // Notify the recipe owner (skip self-comments and skip if they were
   // already notified as the parent author)
-  if (recipe.userId === userId || recipe.userId === parentAuthorId) return;
+  if (recipe.userId !== userId && recipe.userId !== parentAuthorId) {
+    await notifyUser(recipe.userId, {
+      type: "comment",
+      actorId: userId,
+      actorUsername: username,
+      recipeId,
+      dishName: recipe.dishName,
+      preview: previewText,
+      title: "New comment",
+      body: `@${username ?? "Someone"} on your ${recipe.dishName}: "${previewText}"`,
+    });
+  }
 
-  await notifyUser(recipe.userId, {
-    type: "comment",
-    actorId: userId,
-    actorUsername: username,
+  // Friend activity for top-level comments (bell only, no push)
+  if (!parentCommentId) {
+    await fanOutToFollowers(userId, [recipe.userId], {
+      type: "friend_comment",
+      actorId: userId,
+      actorUsername: username,
+      recipeId,
+      dishName: recipe.dishName,
+      preview: previewText,
+      targetUsername: recipe.username,
+      sendPush: false,
+    });
+  }
+
+  // Notify anyone @mentioned in the comment (skip the recipe owner and parent
+  // author, already notified above).
+  const excludeMentions = [];
+  if (recipe.userId !== userId) {
+    const ownerDoc = await db.collection("users").doc(recipe.userId).get();
+    if (ownerDoc.data()?.username) excludeMentions.push(ownerDoc.data().username);
+  }
+  await notifyMentions({
+    text,
+    authorId: userId,
+    authorUsername: username,
     recipeId,
     dishName: recipe.dishName,
-    preview: previewText,
-    title: "New comment",
-    body: `@${username ?? "Someone"} on your ${recipe.dishName}: "${previewText}"`,
+    excludeUsernames: excludeMentions,
   });
 });
 
@@ -290,6 +449,38 @@ exports.onCommentDeleted = onDocumentDeleted("comments/{commentId}", async (even
   await admin.firestore().collection("recipes").doc(recipeId).update({
     commentCount: admin.firestore.FieldValue.increment(-1),
   }).catch(() => {});
+  await refreshRecentComments(recipeId);
+});
+
+// Comment likes — notify the comment's author when someone new likes it.
+exports.onCommentUpdated = onDocumentUpdated("comments/{commentId}", async (event) => {
+  const before = event.data.before.data();
+  const after = event.data.after.data();
+  if (!before || !after) return;
+
+  const beforeLikes = new Set(before.likedBy || []);
+  const newLikers = (after.likedBy || []).filter((id) => !beforeLikes.has(id));
+  if (newLikers.length === 0) return;
+
+  const authorId = after.userId;
+  const preview = String(after.text ?? "").slice(0, 80);
+  const db = admin.firestore();
+
+  for (const likerId of newLikers) {
+    if (likerId === authorId) continue;
+    const likerDoc = await db.collection("users").doc(likerId).get();
+    const likerUsername = likerDoc.data()?.username ?? "Someone";
+
+    await notifyUser(authorId, {
+      type: "comment_like",
+      actorId: likerId,
+      actorUsername: likerUsername,
+      recipeId: after.recipeId,
+      preview,
+      title: "Comment liked",
+      body: `@${likerUsername} liked your comment.`,
+    });
+  }
 });
 
 // Drafts an ingredient list from the user's written cooking steps.

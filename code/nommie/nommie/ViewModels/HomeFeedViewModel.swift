@@ -9,6 +9,7 @@ class HomeFeedViewModel: ObservableObject {
     @Published var selectedTag: String? = nil
     @Published var likedRecipeIds: Set<String> = []
     @Published var followingIdSet: Set<String> = []
+    @Published var blockedIdSet: Set<String> = []
     @Published var authorPhotoById: [String: String] = [:]
 
     // Weekly overview (current user's plates in the last 7 days)
@@ -110,6 +111,7 @@ class HomeFeedViewModel: ObservableObject {
                 self.likedRecipeIds = liked
                 self.authorPhotoById = authorMap.mapValues { $0.photoURL }
                 self.followingIdSet = Set(followingIds)
+                self.blockedIdSet = blockedIds
                 self.platesThisWeek = weekCount
                 self.avgProteinThisWeek = avgProtein
                 self.isLoading = false

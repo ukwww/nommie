@@ -156,6 +156,8 @@ class AuthViewModel: ObservableObject {
                     username: username,
                     email: newUserEmail
                 )
+                // Seed the graph so the new user's feed isn't empty.
+                await userService.autoFollowFounder(newUserId: newUserID)
                 if let data = try await userService.fetchUserProfile(uid: newUserID),
                    let user = NommieUser(from: data) {
                     await MainActor.run {
@@ -256,17 +258,6 @@ class AuthViewModel: ObservableObject {
         } catch {
             await MainActor.run { errorMessage = "Couldn't save your profile. Please try again." }
             return false
-        }
-    }
-
-    // MARK: - Export tracking
-
-    func recordExport() {
-        guard let uid = currentNommieUser?.id else { return }
-        currentNommieUser?.exportCount += 1
-        Task {
-            try? await Firestore.firestore().collection("users").document(uid)
-                .updateData(["exportCount": FieldValue.increment(Int64(1))])
         }
     }
 

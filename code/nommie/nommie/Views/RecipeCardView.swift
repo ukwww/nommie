@@ -7,11 +7,15 @@ struct RecipeCardView: View {
     var currentUserId: String? = nil
     var likedByMe: Bool = false
     var followingIds: Set<String> = []
+    var blockedIds: Set<String> = []
     var authorPhotoURL: String? = nil
     var onUsernameTap: (() -> Void)? = nil
     var onLikeTap: (() -> Void)? = nil
     var onLikerTap: ((String) -> Void)? = nil
     var onCommentTap: (() -> Void)? = nil
+    var onDoubleTapLike: (() -> Void)? = nil
+
+    @State private var likeBurst = false
 
     private var palette: CardPalette {
         CardPalettes.palette(forOwner: recipe.userId, currentUserId: currentUserId)
@@ -24,6 +28,14 @@ struct RecipeCardView: View {
         return recipe.recentLikers.first {
             followingIds.contains($0.userId) || $0.userId == currentUserId
         } ?? recipe.recentLikers.first
+    }
+
+    // Newest-first from the trigger; show them oldest-first like a mini thread,
+    // with blocked users' comments filtered out.
+    private var previewComments: [RecipePreviewComment] {
+        Array(recipe.recentComments
+            .filter { !blockedIds.contains($0.userId) }
+            .reversed())
     }
 
     // "@sam and 3 others liked"
@@ -48,46 +60,45 @@ struct RecipeCardView: View {
 
     // MARK: - Thumbnail Card (Profile Grid) — image with overlaid name
     var thumbnailCard: some View {
-        ZStack(alignment: .topTrailing) {
-            ZStack(alignment: .bottomLeading) {
-                GeometryReader { geo in
-                    CachedAsyncImage(url: URL(string: recipe.imageURL)) { image in
-                        image.resizable().scaledToFill()
-                            .frame(width: geo.size.width, height: geo.size.width)
-                            .clipped()
-                    } placeholder: {
-                        Rectangle()
-                            .fill(palette.accent.opacity(0.1))
-                            .frame(width: geo.size.width, height: geo.size.width)
-                            .overlay(
-                                Image(systemName: "fork.knife")
-                                    .foregroundColor(palette.accent.opacity(0.3))
-                            )
-                    }
+        ZStack(alignment: .bottomLeading) {
+            GeometryReader { geo in
+                CachedAsyncImage(url: URL(string: recipe.imageURL)) { image in
+                    image.resizable().scaledToFill()
+                        .frame(width: geo.size.width, height: geo.size.width)
+                        .clipped()
+                } placeholder: {
+                    Rectangle()
+                        .fill(palette.accent.opacity(0.1))
+                        .frame(width: geo.size.width, height: geo.size.width)
+                        .overlay(
+                            Image(systemName: "fork.knife")
+                                .foregroundColor(palette.accent.opacity(0.3))
+                        )
                 }
-                .aspectRatio(1.0, contentMode: .fit)
-
-                // Bottom scrim + dish name
-                LinearGradient(
-                    colors: [.black.opacity(0.0), .black.opacity(0.55)],
-                    startPoint: .center, endPoint: .bottom
-                )
-                .allowsHitTesting(false)
-
-                Text(recipe.dishName)
-                    .font(Font.custom("Lora-Bold", size: 15))
-                    .foregroundColor(.white)
-                    .lineLimit(2)
-                    .shadow(color: .black.opacity(0.4), radius: 3, x: 0, y: 1)
-                    .padding(10)
             }
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(palette.accent.opacity(0.4), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
-            )
+            .aspectRatio(1.0, contentMode: .fit)
 
-            // Replate badge
+            // Bottom scrim + dish name
+            LinearGradient(
+                colors: [.black.opacity(0.0), .black.opacity(0.55)],
+                startPoint: .center, endPoint: .bottom
+            )
+            .allowsHitTesting(false)
+
+            Text(recipe.dishName)
+                .font(Font.custom("Lora-Bold", size: 15))
+                .foregroundColor(.white)
+                .lineLimit(2)
+                .shadow(color: .black.opacity(0.4), radius: 3, x: 0, y: 1)
+                .padding(10)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(palette.accent.opacity(0.4), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+        )
+        // Replate badge, top-left
+        .overlay(alignment: .topLeading) {
             if recipe.isReplate {
                 Image(systemName: "arrow.2.squarepath")
                     .font(.system(size: 11, weight: .bold))
@@ -96,6 +107,22 @@ struct RecipeCardView: View {
                     .background(Circle().fill(palette.accent))
                     .padding(8)
             }
+        }
+        // Like heart + count, top-right
+        .overlay(alignment: .topTrailing) {
+            VStack(spacing: 2) {
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 24))
+                    .foregroundColor(.white)
+                    .shadow(color: .black.opacity(0.45), radius: 3, x: 0, y: 1)
+                if recipe.likeCount > 0 {
+                    Text("\(recipe.likeCount)")
+                        .font(Font.custom("Nunito-Bold", size: 19))
+                        .foregroundColor(.white)
+                        .shadow(color: .black.opacity(0.45), radius: 3, x: 0, y: 1)
+                }
+            }
+            .padding(10)
         }
     }
 
@@ -137,6 +164,27 @@ struct RecipeCardView: View {
                 }
 
                 Spacer(minLength: 0)
+
+                // Replate + save counts live up here, out of the social row's way
+                HStack(spacing: 10) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "arrow.2.squarepath")
+                            .font(.system(size: 12))
+                        if recipe.replateCount > 0 {
+                            Text("\(recipe.replateCount)")
+                                .font(Font.custom("Nunito-SemiBold", size: 12))
+                        }
+                    }
+                    HStack(spacing: 3) {
+                        Image(systemName: recipe.saveCount > 0 ? "bookmark.fill" : "bookmark")
+                            .font(.system(size: 12))
+                        if recipe.saveCount > 0 {
+                            Text("\(recipe.saveCount)")
+                                .font(Font.custom("Nunito-SemiBold", size: 12))
+                        }
+                    }
+                }
+                .foregroundColor(.nommieBrown.opacity(0.45))
             }
             .padding(.horizontal, 18)
             .padding(.top, 16)
@@ -197,60 +245,9 @@ struct RecipeCardView: View {
             }
             .padding(.horizontal, 18)
 
-            // Social row: like button + liker line + save count + watermark
-            HStack(spacing: 12) {
-                Button(action: { onLikeTap?() }) {
-                    HStack(spacing: 5) {
-                        Image(systemName: likedByMe ? "heart.fill" : "heart")
-                            .font(.system(size: 16))
-                            .foregroundColor(likedByMe ? palette.accent : .nommieBrown.opacity(0.45))
-                            .scaleEffect(likedByMe ? 1.0 : 0.96)
-                            .animation(.spring(response: 0.3, dampingFraction: 0.5), value: likedByMe)
-                        if recipe.likeCount > 0 {
-                            Text("\(recipe.likeCount)")
-                                .font(Font.custom("Nunito-SemiBold", size: 13))
-                                .foregroundColor(.nommieBrown.opacity(0.6))
-                        }
-                    }
-                }
-                .buttonStyle(PlainButtonStyle())
-
-                Button(action: { onCommentTap?() }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "bubble.left")
-                            .font(.system(size: 14))
-                            .foregroundColor(.nommieBrown.opacity(0.45))
-                        if recipe.commentCount > 0 {
-                            Text("\(recipe.commentCount)")
-                                .font(Font.custom("Nunito-SemiBold", size: 13))
-                                .foregroundColor(.nommieBrown.opacity(0.6))
-                        }
-                    }
-                }
-                .buttonStyle(PlainButtonStyle())
-
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.2.squarepath")
-                        .font(.system(size: 13))
-                        .foregroundColor(.nommieBrown.opacity(0.45))
-                    if recipe.replateCount > 0 {
-                        Text("\(recipe.replateCount)")
-                            .font(Font.custom("Nunito-SemiBold", size: 13))
-                            .foregroundColor(.nommieBrown.opacity(0.6))
-                    }
-                }
-
-                HStack(spacing: 4) {
-                    Image(systemName: recipe.saveCount > 0 ? "bookmark.fill" : "bookmark")
-                        .font(.system(size: 13))
-                        .foregroundColor(.nommieBrown.opacity(0.45))
-                    if recipe.saveCount > 0 {
-                        Text("\(recipe.saveCount)")
-                            .font(Font.custom("Nunito-SemiBold", size: 13))
-                            .foregroundColor(.nommieBrown.opacity(0.6))
-                    }
-                }
-
+            // Social block: liker line on top (full width), then the big
+            // like + comment row, then up to two comment previews.
+            VStack(alignment: .leading, spacing: 8) {
                 if let line = likerLine {
                     Button(action: {
                         if let picked = pickedLiker, picked.userId != currentUserId {
@@ -258,19 +255,78 @@ struct RecipeCardView: View {
                         }
                     }) {
                         Text(line)
-                            .font(Font.custom("Nunito-Regular", size: 12))
-                            .foregroundColor(.nommieBrown.opacity(0.5))
+                            .font(Font.custom("Nunito-SemiBold", size: 12.5))
+                            .foregroundColor(.nommieBrown.opacity(0.6))
                             .lineLimit(1)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
 
-                Spacer()
+                HStack(spacing: 20) {
+                    Button(action: { onLikeTap?() }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: likedByMe ? "heart.fill" : "heart")
+                                .font(.system(size: 22))
+                                .foregroundColor(likedByMe ? palette.accent : .nommieBrown.opacity(0.65))
+                                .scaleEffect(likedByMe ? 1.0 : 0.96)
+                                .animation(.spring(response: 0.3, dampingFraction: 0.5), value: likedByMe)
+                            if recipe.likeCount > 0 {
+                                Text("\(recipe.likeCount)")
+                                    .font(Font.custom("Nunito-Bold", size: 15))
+                                    .foregroundColor(.nommieBrown.opacity(0.75))
+                            }
+                        }
+                    }
+                    .buttonStyle(PlainButtonStyle())
 
-                Text("nommie")
-                    .font(Font.custom("Nunito-Regular", size: 11))
-                    .italic()
-                    .foregroundColor(.nommieBrown.opacity(0.3))
+                    Button(action: { onCommentTap?() }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "bubble.left")
+                                .font(.system(size: 20))
+                                .foregroundColor(.nommieBrown.opacity(0.65))
+                            if recipe.commentCount > 0 {
+                                Text("\(recipe.commentCount)")
+                                    .font(Font.custom("Nunito-Bold", size: 15))
+                                    .foregroundColor(.nommieBrown.opacity(0.75))
+                            }
+                        }
+                    }
+                    .buttonStyle(PlainButtonStyle())
+
+                    Spacer()
+
+                    Text("nommie")
+                        .font(Font.custom("Nunito-Regular", size: 11))
+                        .italic()
+                        .foregroundColor(.nommieBrown.opacity(0.3))
+                }
+
+                let previews = previewComments
+                if !previews.isEmpty {
+                    VStack(alignment: .leading, spacing: 3) {
+                        ForEach(previews, id: \.self) { comment in
+                            Button(action: { onCommentTap?() }) {
+                                (Text("@\(comment.username) ")
+                                    .font(Font.custom("Nunito-Bold", size: 12.5))
+                                 + Text(comment.text)
+                                    .font(Font.custom("Nunito-Regular", size: 12.5)))
+                                    .foregroundColor(.nommieBrown.opacity(0.75))
+                                    .lineLimit(1)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                        if recipe.commentCount > previews.count {
+                            Button(action: { onCommentTap?() }) {
+                                Text("View all \(recipe.commentCount) comments")
+                                    .font(Font.custom("Nunito-Regular", size: 12))
+                                    .foregroundColor(.nommieBrown.opacity(0.45))
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                }
             }
             .padding(.horizontal, 18)
             .padding(.top, 12)
@@ -283,8 +339,27 @@ struct RecipeCardView: View {
             RoundedRectangle(cornerRadius: 20)
                 .stroke(palette.accent.opacity(0.35), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
         )
+        .overlay {
+            if likeBurst {
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 64))
+                    .foregroundColor(.white)
+                    .shadow(color: .black.opacity(0.28), radius: 6, x: 0, y: 2)
+                    .transition(.scale(scale: 0.5).combined(with: .opacity))
+            }
+        }
+        .highPriorityGesture(TapGesture(count: 2).onEnded { doubleTapLike() })
         .shadow(color: Color.black.opacity(0.07), radius: 10, x: 0, y: 3)
         .padding(.horizontal, 16)
+    }
+
+    private func doubleTapLike() {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) { likeBurst = true }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        onDoubleTapLike?()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+            withAnimation(.easeOut(duration: 0.3)) { likeBurst = false }
+        }
     }
 }
 

@@ -229,7 +229,6 @@ struct ExportBottomSheet: View {
                 )
                 try await exportService.saveToPhotoLibrary(image)
                 NommieAnalytics.cardExported(format: selectedFormat == .story ? "story" : "post")
-                await MainActor.run { authViewModel.recordExport() }
                 await MainActor.run {
                     isExporting = false
                     showSuccess = true
